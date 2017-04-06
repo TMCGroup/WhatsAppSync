@@ -1,7 +1,8 @@
 
-.idea
+.gitignore
+.idea/
 db.sqlite3
-sync/migrations/
 media/logs
+WhatsAppSync/settings.py
+*.pyc
 .travis.yml
-WhatsAppSync.settings.py
