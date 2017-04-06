@@ -1,10 +1,6 @@
 import os
 from django.db import models
-from django.contrib.auth.models import User
 from django.core.files.storage import default_storage
-import re
-from django.db import transaction
-from datetime import datetime
 from dateutil.parser import parse
 
 
@@ -16,29 +12,34 @@ class Contact(models.Model):
 
     @classmethod
     def create_contact(cls, txt_file):
+        contact_count = 0
         for msg_line in default_storage.open(os.path.join(str(txt_file)), 'r'):
             f_appearance = msg_line.find(":")
             s_appearance = msg_line.find(":", f_appearance + 1)
-            if not ":" in msg_line[f_appearance+1:]:
-                listofmsg_line = msg_line.split(",")
-                if is_date(listofmsg_line[0]):
-                    Notification(text=msg_line[f_appearance + 5:-1], sent_date=msg_line[:f_appearance + 3]).save()
+            if not ":" in msg_line[f_appearance + 1:]:
+                list_of_msg_line = msg_line.split(",")
+                if is_date(list_of_msg_line[0]):
+                    Notification.insert_notification(text=msg_line[f_appearance + 5:-1],
+                                                     sent_date=msg_line[:f_appearance + 3]).save()
             else:
-                listofmsg_line = msg_line.split(",")
-                if is_date(listofmsg_line[0]):
-                    number = msg_line[f_appearance+5:s_appearance]
+                list_of_msg_line = msg_line.split(",")
+                if is_date(list_of_msg_line[0]):
+                    number = msg_line[f_appearance + 5:s_appearance]
                     contact = cls.objects.create(number=number, name=number)
-                    Message.create_msg(text=msg_line[s_appearance + 1:], sent_date=msg_line[:f_appearance + 3],
-                                       contact=contact)
-                # else:
-                #     msg = []
-                #     msg.append(listofmsg_line.)
-                #     Message.create_msg(text=msg_line[s_appearance + 1:], sent_date=msg_line[:f_appearance + 3],
-                #                        contact=contact)
+                    contact_id = Contact.objects.get(id=contact.id)
+                    Message.insert_message(text=msg_line[s_appearance + 1:], sent_date=msg_line[:f_appearance + 3],
+                                           contact=contact_id)
+
+            Log.objects.filter(log=txt_file).update(synced=True)
+            contact_count += 1
+        return contact_count
 
     @classmethod
     def contact_exists(cls, number):
         return cls.objects.filter(number=number).exists()
+
+    def __unicode__(self):
+        return str(self.number)
 
 
 class Message(models.Model):
@@ -49,8 +50,11 @@ class Message(models.Model):
     contact = models.ForeignKey(Contact)
 
     @classmethod
-    def create_msg(cls, text, sent_date, contact):
-        return cls.objects.create(text = text, sent_date=sent_date, contact=contact)
+    def insert_message(cls, text, sent_date, contact):
+        return cls.objects.create(text=text, sent_date=sent_date, contact=contact)
+
+    def __unicode__(self):
+        return self.text
 
 
 class Notification(models.Model):
@@ -74,18 +78,15 @@ class Log(models.Model):
     chat_type = models.CharField(max_length=17, choices=CHAT)
     created_on = models.DateTimeField(auto_now_add=True)
     synced = models.BooleanField(default=False)
-    created_by = models.ForeignKey(User, related_name='created_by')
-    modified_by = models.ForeignKey(User, related_name='modified_by')
+
+    def __unicode__(self):
+        return unicode(self.log)
 
     @classmethod
-    def read_log_file(cls):
-        data_list = []
+    def get_log_file(cls):
         txt_file = cls.objects.filter(synced=False).first().log
         Contact.create_contact(txt_file=txt_file)
-
-
-    def upload_log_file(self):
-        pass
+        return txt_file
 
 
 def is_date(string):
@@ -94,4 +95,3 @@ def is_date(string):
         return True
     except ValueError:
         return False
-
