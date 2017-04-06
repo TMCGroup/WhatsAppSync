@@ -91,3 +91,7 @@ ENV/
 
 .idea
 db.sqlite3
+sync/migrations/
+media/logs
+.travis.yml
+WhatsAppSync.settings.py
