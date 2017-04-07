@@ -25,9 +25,15 @@ class Contact(models.Model):
                 list_of_msg_line = msg_line.split(",")
                 if is_date(list_of_msg_line[0]):
                     number = msg_line[f_appearance + 5:s_appearance]
-                    contact = cls.objects.create(number=number, name=number)
-                    contact_id = Contact.objects.get(id=contact.id)
-                    Message.insert_message(text=msg_line[s_appearance + 1:], sent_date=msg_line[:f_appearance + 3],
+                    if Contact.contact_exists(number):
+                        contact = cls.objects.filter(number=number).first()
+                        contact_id = Contact.objects.get(id=contact.id)
+                        Message.insert_message(text=msg_line[s_appearance + 1:], sent_date=msg_line[:f_appearance + 3],
+                                               contact=contact_id)
+                    else:
+                        contact = cls.objects.create(number=number, name=number)
+                        contact_id = Contact.objects.get(id=contact.id)
+                        Message.insert_message(text=msg_line[s_appearance + 1:], sent_date=msg_line[:f_appearance + 3],
                                            contact=contact_id)
 
             Log.objects.filter(log=txt_file).update(synced=True)
