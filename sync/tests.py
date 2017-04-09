@@ -1,6 +1,9 @@
 from django.test import TestCase
 from .models import Contact, Message, Log, Notification
 
+class DumbTest(TestCase):
+    def test_one_plus_one(self):
+        self.assertEquals(1+1, 2)
 
 class TestLog(TestCase):
     def setUp(self):
