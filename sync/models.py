@@ -14,26 +14,28 @@ class Contact(models.Model):
     def create_contact(cls, txt_file):
         contact_count = 0
         for msg_line in default_storage.open(os.path.join(str(txt_file)), 'r'):
-            f_appearance = msg_line.find(":")
-            s_appearance = msg_line.find(":", f_appearance + 1)
-            if not ":" in msg_line[f_appearance + 1:]:
+            first_appearance = msg_line.find(":")
+            second_appearance = msg_line.find(":", first_appearance + 1)
+            if not ":" in msg_line[first_appearance + 1:]:
                 list_of_msg_line = msg_line.split(",")
                 if is_date(list_of_msg_line[0]):
-                    Notification.insert_notification(text=msg_line[f_appearance + 5:-1],
-                                                     sent_date=msg_line[:f_appearance + 3]).save()
+                    Notification.insert_notification(text=msg_line[first_appearance + 5:-1],
+                                                     sent_date=msg_line[:first_appearance + 3]).save()
             else:
                 list_of_msg_line = msg_line.split(",")
                 if is_date(list_of_msg_line[0]):
-                    number = msg_line[f_appearance + 5:s_appearance]
-                    if Contact.contact_exists(number):
-                        contact = cls.objects.filter(number=number).first()
+                    number = msg_line[first_appearance + 5:second_appearance]
+                    clean_contact = Contact.correct_contact(number)
+                    if Contact.contact_exists(clean_contact):
+                        contact = cls.objects.filter(number=clean_contact).first()
                         contact_id = Contact.objects.get(id=contact.id)
-                        Message.insert_message(text=msg_line[s_appearance + 1:], sent_date=msg_line[:f_appearance + 3],
+                        Message.insert_message(text=msg_line[second_appearance + 1:], sent_date=msg_line[:first_appearance + 3],
                                                contact=contact_id)
                     else:
-                        contact = cls.objects.create(number=number, name=number)
+                        clean_contact = Contact.correct_contact(number)
+                        contact = cls.objects.create(number=clean_contact, name=clean_contact)
                         contact_id = Contact.objects.get(id=contact.id)
-                        Message.insert_message(text=msg_line[s_appearance + 1:], sent_date=msg_line[:f_appearance + 3],
+                        Message.insert_message(text=msg_line[second_appearance + 1:], sent_date=msg_line[:first_appearance + 3],
                                            contact=contact_id)
 
             Log.objects.filter(log=txt_file).update(synced=True)
@@ -44,8 +46,17 @@ class Contact(models.Model):
     def contact_exists(cls, number):
         return cls.objects.filter(number=number).exists()
 
+    @classmethod
+    def correct_contact(cls, number):
+        if number[0:4] == "M - ":
+            clean_contact = number[4:]
+            return clean_contact
+        else:
+            clean_contact = number
+            return clean_contact
+
     def __unicode__(self):
-        return str(self.number)
+        return self.number
 
 
 class Message(models.Model):
@@ -90,9 +101,12 @@ class Log(models.Model):
 
     @classmethod
     def get_log_file(cls):
-        txt_file = cls.objects.filter(synced=False).first().log
-        Contact.create_contact(txt_file=txt_file)
-        return txt_file
+        if cls.objects.filter(synced=False).exists():
+            txt_file = cls.objects.filter(synced=False).first().log
+            Contact.create_contact(txt_file=txt_file)
+            return txt_file
+        else:
+            print("All files synced")
 
 
 def is_date(string):
