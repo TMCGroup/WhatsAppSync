@@ -14,6 +14,7 @@ class Contact(models.Model):
     def create_contact(cls, txt_file):
         contact_count = 0
         for msg_line in default_storage.open(os.path.join(str(txt_file)), 'r'):
+
             first_appearance = msg_line.find(":")
             second_appearance = msg_line.find(":", first_appearance + 1)
             if not ":" in msg_line[first_appearance + 1:]:
@@ -57,7 +58,6 @@ class Contact(models.Model):
 
     def __unicode__(self):
         return self.number
-
 
 class Message(models.Model):
     created_on = models.DateTimeField(auto_now_add=True)
@@ -107,6 +107,7 @@ class Log(models.Model):
             return txt_file
         else:
             print("All files synced")
+
 
 
 def is_date(string):

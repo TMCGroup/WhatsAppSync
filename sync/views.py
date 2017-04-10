@@ -6,3 +6,4 @@ from .models import Log
 
 def index(request):
      pass
+

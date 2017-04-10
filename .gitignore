@@ -6,4 +6,5 @@ media/logs/*
 !media/logs/.gitkeep
 WhatsAppSync/settings.py
 *.pyc
+.travis.yml
 
