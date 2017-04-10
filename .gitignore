@@ -2,7 +2,9 @@
 .gitignore
 .idea/
 db.sqlite3
-media/logs
+media/logs/*
+!media/logs/.gitkeep
 WhatsAppSync/settings.py
 *.pyc
 .travis.yml
+
