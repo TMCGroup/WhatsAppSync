@@ -23,7 +23,9 @@ SECRET_KEY = 'x95!140ss!f^&o^(mwu42@a&zxf86f!*pp1%^94pvkj%1x*j+7'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['ngrok', 'e0d16073.ngrok.io',
+                 '127.0.0.1', '127.0.0.1:8001'
+                 ]
 
 
 # Application definition
@@ -128,5 +130,11 @@ ADMIN_SITE_INDEX = "WhatsApp to RapidPro Syncroniser"
 TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'
 
 MEDIA_URL = '/media/'
-
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+HOST = 'http://localhost:8000'
+KEY = 'b1caed7765ac185c91289c4dea948fd665e82a32'
+
+#url = "https://hiwa.tmcg.co.ug/handlers/external/received/412bb380-188f-42b7-8bc8-f8dd32f6e817/"
+
+

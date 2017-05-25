@@ -5,11 +5,13 @@
     <title>Title</title>
 </head>
 <body>
-{% for d in data %}
+{% for message in messages%}
 
-<p>{{d}}</p>
+{{message.contact}}
+{{message.text}}
+{{message.sent_date}}
+
 {% endfor %}
-
 
 </body>
 </html>

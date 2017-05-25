@@ -1,9 +1,11 @@
 from django.test import TestCase
 from .models import Contact, Message, Log, Notification
 
+
 class DumbTest(TestCase):
     def test_one_plus_one(self):
-        self.assertEquals(1+1, 2)
+        self.assertEquals(1 + 1, 2)
+
 
 class TestLog(TestCase):
     def setUp(self):
@@ -37,6 +39,15 @@ class TestMessage(TestCase):
 
         self.assertEquals(Message.objects.count(), initial_message_count + message_count)
 
+    def test_send_to_rapidpro(self):
+        contact = Contact.objects.first()
+        Message.insert_message(text="Hello there!", sent_date="12/31/16, 19:20", contact=contact)
+        message_count = Message.objects.filter(rapidpro_status=True).count()
+        Message.send_to_rapidpro()
+        sent_message_count = Message.objects.filter(rapidpro_status=True).count()
+
+        self.assertEquals(sent_message_count, message_count + sent_message_count)
+
 
 class TestContact(TestCase):
     def setUp(self):
@@ -54,4 +65,3 @@ class TestContact(TestCase):
         log_file = Log.get_log_file()
         added_contacts = Contact.create_contact(log_file)
         self.assertEquals(Contact.objects.count(), contact_count + added_contacts)
-

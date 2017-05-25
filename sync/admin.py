@@ -19,15 +19,17 @@ class ContactAdmin(admin.ModelAdmin):
     list_filter = ('modified_on','created_on')
     search_fields = ['id']
 
+
 class MessageAdmin(admin.ModelAdmin):
-    list_display = ('id','text', 'sent_date', 'contact')
-    list_filter = ('modified_on','created_on')
-    fieldsets = [
-        (None, {'fields': ['contact']}),
-    ]
+    list_display = ('id', 'text', 'sent_date', 'contact', 'rapidpro_status')
+    list_filter = ('modified_on', 'created_on')
+    # fieldsets = [
+    #     (None, {'fields': ['contact']}),
+    # ]
     search_fields = ['id', 'text']
 
-admin.site.register(Log, LogAdmin)
+
 admin.site.register(Notification, NotificationAdmin)
 admin.site.register(Message, MessageAdmin)
 admin.site.register(Contact, ContactAdmin)
+admin.site.register(Log, LogAdmin)

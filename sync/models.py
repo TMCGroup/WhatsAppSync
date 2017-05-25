@@ -1,7 +1,16 @@
 import os
+from django.conf import settings
 from django.db import models
 from django.core.files.storage import default_storage
 from dateutil.parser import parse
+from datetime import datetime, tzinfo, timedelta
+import requests
+
+url = 'https://hiwa.tmcg.co.ug/handlers/external/received/52c5b798-ee7a-4322-9ea4-9ead3995b2c7/'
+
+
+class TZ(tzinfo):
+    def utcoffset(self, dt): return timedelta(minutes=180)  # Getting timezone offset
 
 
 class Contact(models.Model):
@@ -30,17 +39,19 @@ class Contact(models.Model):
                     if Contact.contact_exists(clean_contact):
                         contact = cls.objects.filter(number=clean_contact).first()
                         contact_id = Contact.objects.get(id=contact.id)
-                        Message.insert_message(text=msg_line[second_appearance + 1:], sent_date=msg_line[:first_appearance + 3],
+                        Message.insert_message(text=msg_line[second_appearance + 1:],
+                                               sent_date=msg_line[:first_appearance + 3],
                                                contact=contact_id)
+                        contact_count += 1
                     else:
                         clean_contact = Contact.correct_contact(number)
                         contact = cls.objects.create(number=clean_contact, name=clean_contact)
                         contact_id = Contact.objects.get(id=contact.id)
-                        Message.insert_message(text=msg_line[second_appearance + 1:], sent_date=msg_line[:first_appearance + 3],
-                                           contact=contact_id)
+                        Message.insert_message(text=msg_line[second_appearance + 1:],
+                                               sent_date=msg_line[:first_appearance + 3], contact=contact_id)
+                        contact_count += 1
 
             Log.objects.filter(log=txt_file).update(synced=True)
-            contact_count += 1
         return contact_count
 
     @classmethod
@@ -59,12 +70,32 @@ class Contact(models.Model):
     def __unicode__(self):
         return self.number
 
+
 class Message(models.Model):
     created_on = models.DateTimeField(auto_now_add=True)
     modified_on = models.DateTimeField(auto_now=True)
     text = models.TextField()
     sent_date = models.CharField(max_length=30)
     contact = models.ForeignKey(Contact)
+    rapidpro_status = models.BooleanField(default=False)
+
+    @classmethod
+    def send_to_rapidpro(cls):
+        messages = Message.objects.filter(rapidpro_status=False).all()
+        sent = 0
+        for m in messages:
+            sent_date = parse(m.sent_date)
+            string_date = str(sent_date)
+            date_iso = sent_date.isoformat()
+            date = date_iso + '.180Z'
+            number = m.contact.number
+            text = m.text
+            data = {'from': number, 'text': text + " " + string_date, 'date': date}
+            requests.post(url, data=data, headers={'context_type': 'application/x-www-form-urlencoded'})
+            Message.objects.filter(id=m.id).update(rapidpro_status=True)
+            sent += 1
+
+        return sent
 
     @classmethod
     def insert_message(cls, text, sent_date, contact):
@@ -107,7 +138,6 @@ class Log(models.Model):
             return txt_file
         else:
             print("All files synced")
-
 
 
 def is_date(string):
