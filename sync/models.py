@@ -85,12 +85,11 @@ class Message(models.Model):
         sent = 0
         for m in messages:
             sent_date = parse(m.sent_date)
-            string_date = str(sent_date)
             date_iso = sent_date.isoformat()
             date = date_iso + '.180Z'
             number = m.contact.number
             text = m.text
-            data = {'from': number, 'text': text + " " + string_date, 'date': date}
+            data = {'from': number, 'text': text + " " + date_iso, 'date': date}
             requests.post(url, data=data, headers={'context_type': 'application/x-www-form-urlencoded'})
             Message.objects.filter(id=m.id).update(rapidpro_status=True)
             sent += 1
