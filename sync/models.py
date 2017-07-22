@@ -5,6 +5,7 @@ from django.core.files.storage import default_storage
 from dateutil.parser import parse
 from datetime import datetime, tzinfo, timedelta
 import requests
+import glob
 
 url = 'https://hiwa.tmcg.co.ug/handlers/external/received/52c5b798-ee7a-4322-9ea4-9ead3995b2c7/'
 
@@ -122,7 +123,7 @@ class Log(models.Model):
     CHAT = (('Group Chat', 'Group Chat'), ('Individual Chat', 'Individual Chat'))
 
     log = models.FileField(upload_to="logs")
-    chat_type = models.CharField(max_length=17, choices=CHAT)
+    chat_type = models.CharField(max_length=17, choices=CHAT, default='Individual Chat')
     created_on = models.DateTimeField(auto_now_add=True)
     synced = models.BooleanField(default=False)
 
@@ -137,6 +138,17 @@ class Log(models.Model):
             return txt_file
         else:
             print("All files synced")
+
+    @classmethod
+    def add_mulitple_logs_from_logs_directory(cls):
+        path_extensions = ['media/logs/*.txt', 'media/logs/*.jpg', 'media/logs/*.jpeg', 'media/logs/*.gif', ]
+        files_added = 0
+        for path_extension in path_extensions:
+            for filename in glob.iglob(path_extension):
+                cleaned_filename = os.path.join(*(filename.split(os.path.sep)[1:]))
+                Log.objects.create(log=cleaned_filename)
+                files_added += 1
+        return files_added
 
 
 def is_date(string):
