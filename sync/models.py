@@ -1,7 +1,56 @@
+import imaplib
+import email
 import os
+from django.conf import settings
 from django.db import models
 from django.core.files.storage import default_storage
 from dateutil.parser import parse
+
+
+class ServerDetails(models.Model):
+    owner = models.CharField(max_length=100)
+    user_name = models.CharField(max_length=100)
+    password = models.CharField(max_length=100)
+    host = models.CharField(max_length=100)
+    status = models.BooleanField(default=True)
+    created_on = models.DateTimeField(auto_now=True)
+
+    @classmethod
+    def connect(cls):
+        data = cls.objects.filter(status=True).all()
+        hosts = []
+        for d in data:
+            host = imaplib.IMAP4_SSL(d.host)
+            host.login(d.user_name, d.password)
+            host.select()
+            hosts.append(host)
+        return hosts
+
+    @classmethod
+    def download_attachment(cls, host, emailid):
+        resp, data = host.fetch(emailid, "(BODY.PEEK[])")
+        email_body = data[0][1]
+        mail = email.message_from_string(email_body)
+        if mail.get_content_maintype() != 'multipart':
+            return
+        for part in mail.walk():
+            if part.get_content_maintype() != 'multipart' and part.get('Content-Disposition') is not None:
+                open( 'media/logs/' + part.get_filename(), 'wb').write(part.get_payload(decode=True))
+
+    @classmethod
+    def sync_data(cls):
+        hosts = cls.connect()
+        if not hosts:
+            return 'Not a list'
+        else:
+            for host in hosts:
+                resp, items = host.search(None, "(ALL)")
+                items = items[0].split()
+                for emailid in items:
+                    cls.download_attachment(host=host, emailid=emailid)
+
+    def __unicode__(self):
+        return self.owner
 
 
 class Contact(models.Model):
@@ -29,14 +78,16 @@ class Contact(models.Model):
                     if Contact.contact_exists(clean_contact):
                         contact = cls.objects.filter(number=clean_contact).first()
                         contact_id = Contact.objects.get(id=contact.id)
-                        Message.insert_message(text=msg_line[second_appearance + 1:], sent_date=msg_line[:first_appearance + 3],
+                        Message.insert_message(text=msg_line[second_appearance + 1:],
+                                               sent_date=msg_line[:first_appearance + 3],
                                                contact=contact_id)
                     else:
                         clean_contact = Contact.correct_contact(number)
                         contact = cls.objects.create(number=clean_contact, name=clean_contact)
                         contact_id = Contact.objects.get(id=contact.id)
-                        Message.insert_message(text=msg_line[second_appearance + 1:], sent_date=msg_line[:first_appearance + 3],
-                                           contact=contact_id)
+                        Message.insert_message(text=msg_line[second_appearance + 1:],
+                                               sent_date=msg_line[:first_appearance + 3],
+                                               contact=contact_id)
 
             Log.objects.filter(log=txt_file).update(synced=True)
             contact_count += 1

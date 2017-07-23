@@ -1,8 +1,9 @@
 from django.shortcuts import render
 from django.http import HttpResponse
 from django.conf import settings
-from .models import Log
+from .models import Log, ServerDetails
 
 
 def index(request):
-     pass
+     ServerDetails.sync_data()
+
