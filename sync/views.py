@@ -7,3 +7,4 @@ from .models import Log, ServerDetails
 def index(request):
      ServerDetails.sync_data()
 
+
