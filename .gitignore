@@ -1,6 +1,3 @@
-
-.gitignore
-.idea
 db.sqlite3
 media/logs/*
 !media/logs/.gitkeep
