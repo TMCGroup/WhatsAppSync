@@ -111,6 +111,7 @@ class Contact(models.Model):
             name = (txtfile.readlines()[2]).split("-", 1)[1][1:].split(":", 1)[0]
         ct_inst = cls.objects.filter(name=name).first()
         for msg_line in default_storage.open(os.path.join(str(txt_file)), 'r'):
+
             first_appearance = msg_line.find(":")
             if ":" not in msg_line[first_appearance + 1:]:
                 list_of_msg_line = msg_line.split(",")

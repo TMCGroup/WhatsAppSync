@@ -119,6 +119,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.10/howto/static-files/
 
 STATIC_URL = '/static/'
+ADMIN_SITE_HEADER ="THE MEDICAL CONCIERGE GROUP"
+ADMIN_SITE_INDEX = "WhatsApp to RapidPro Syncroniser"
 
 ADMIN_SITE_HEADER ="THE MEDICAL CONCIERGE GROUP"
 ADMIN_SITE_INDEX = "WhatsApp to RapidPro Syncroniser"
@@ -126,6 +128,5 @@ ADMIN_SITE_INDEX = "WhatsApp to RapidPro Syncroniser"
 TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'
 
 MEDIA_URL = '/media/'
+
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-
-
