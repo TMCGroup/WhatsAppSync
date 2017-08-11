@@ -1,9 +1,13 @@
 
 .gitignore
-.idea/
+.idea/*
 db.sqlite3
 media/logs/*
+media/csv/*
+media/files/*
+media/downloads/*
 !media/logs/.gitkeep
 WhatsAppSync/settings.py
 *.pyc
+sync/migrations/*
 
