@@ -10,4 +10,4 @@ media/downloads/*
 WhatsAppSync/settings.py
 *.pyc
 sync/migrations/*
-
+.travis.yml
