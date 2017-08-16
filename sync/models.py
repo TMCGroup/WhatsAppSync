@@ -4,10 +4,14 @@ import email
 import shutil
 import os
 import hashlib
+from datetime import datetime, tzinfo, timedelta
+import requests
 import pandas as pd
 from django.db import models
 from django.core.files.storage import default_storage
 from dateutil.parser import parse
+
+url = 'https://hiwa.tmcg.co.ug/handlers/external/received/52c5b798-ee7a-4322-9ea4-9ead3995b2c7/'
 
 path_extensions = ['media/downloads/*.jpg', 'media/downloads/*.jpeg', 'media/downloads/*.gif', 'media/downloads/*.pdf',
                    'media/downloads/*.opus', 'media/downloads/*.mp3', 'media/downloads/*.docx', 'media/downloads/*.doc',
@@ -20,6 +24,10 @@ path_ext_files = ['media/files/*.jpg', 'media/files/*.jpeg', 'media/files/*.gif'
                   'media/files/*.odt', 'media/files/*.ics', 'media/files/*.PNG', 'media/files/*.aac',
                   'media/files/*.vcf', 'media/files/*.png', 'media/files/*.xlsx', 'media/files/*.mp4',
                   'media/files/*.opus', ]
+
+
+class TZ(tzinfo):
+    def utcoffset(self, dt): return timedelta(minutes=180)  # Getting timezone offset
 
 
 class ServerDetails(models.Model):
@@ -64,6 +72,17 @@ class ServerDetails(models.Model):
                 for emailid in items:
                     cls.download_attachment(host=host, emailid=emailid)
 
+    @classmethod
+    def close_connection(cls):
+        data = cls.objects.filter(status=True).all()
+
+        for d in data:
+            host = imaplib.IMAP4_SSL(d.host)
+            host.login(d.user_name, d.password)
+            host.select()
+            host.close()
+        return
+
     def __unicode__(self):
         return self.owner
 
@@ -107,8 +126,12 @@ class Contact(models.Model):
     @classmethod
     def read_txt_log(cls, txt_file):
         contact_count = 0
+        name = ''
         with open('media/' + str(txt_file.log)) as txtfile:
-            name = (txtfile.readlines()[2]).split("-", 1)[1][1:].split(":", 1)[0]
+            try:
+                name = (txtfile.readlines()[2]).split("-", 1)[1][1:].split(":", 1)[0]
+            except IndexError:
+                pass
         ct_inst = cls.objects.filter(name=name).first()
         for msg_line in default_storage.open(os.path.join(str(txt_file)), 'r'):
 
@@ -257,6 +280,7 @@ class Message(models.Model):
     attachment = models.ForeignKey(Attachment, null=True, blank=True)
     log = models.ForeignKey(Log)
     sent_date = models.CharField(max_length=30)
+    rapidpro_status = models.BooleanField(default=False)
     created_on = models.DateTimeField(auto_now_add=True)
     modified_on = models.DateTimeField(auto_now=True)
 
@@ -271,21 +295,41 @@ class Message(models.Model):
         sender_receiver_inst = Contact.objects.filter(name=sender_receiver).first()
         text = msg_line[second_appearance + 1:]
         sent_date = msg_line[:first_appearance + 3]
-        uuid = hashlib.md5(str(sender_receiver_inst.number) + str(sent_date)).hexdigest()
-        if cls.message_exists(uuid):
+        if sender_receiver_inst is None:
             pass
         else:
-            if "(file attached)" in text:
-                ext_split = text.split(".", 1)[1].split("(", 1)[0][:-1]
-                if ext_split in attachment_ext:
-                    attachment = 'files/' + text[1:-17]
-                    attachment_instance = Attachment.objects.filter(file=attachment).first()
-                    cls.objects.create(uuid=uuid, contact=sender_receiver_inst, text=text,
-                                       attachment=attachment_instance,
-                                       log=log, sent_date=sent_date)
+            uuid = hashlib.md5(str(sender_receiver_inst.number) + str(sent_date)).hexdigest()
+            if cls.message_exists(uuid):
+                pass
             else:
-                cls.objects.create(uuid=uuid, contact=sender_receiver_inst, text=text, log=log, sent_date=sent_date)
-                return
+                if "(file attached)" in text:
+                    ext_split = text.split(".", 1)[1].split("(", 1)[0][:-1]
+                    if ext_split in attachment_ext:
+                        attachment = 'files/' + text[1:-17]
+                        attachment_instance = Attachment.objects.filter(file=attachment).first()
+                        cls.objects.create(uuid=uuid, contact=sender_receiver_inst, text=text,
+                                           attachment=attachment_instance,
+                                           log=log, sent_date=sent_date)
+                else:
+                    cls.objects.create(uuid=uuid, contact=sender_receiver_inst, text=text, log=log, sent_date=sent_date)
+                    return
+                
+    @classmethod
+    def send_to_rapidpro(cls):
+        messages = Message.objects.filter(rapidpro_status=False).all()
+        sent = 0
+        for m in messages:
+            sent_date = parse(m.sent_date)
+            date_iso = sent_date.isoformat()
+            date = date_iso + '.180Z'
+            number = m.contact.number
+            text = m.text
+            data = {'from': number, 'text': text + " " + date_iso, 'date': date}
+            requests.post(url, data=data, headers={'context_type': 'application/x-www-form-urlencoded'})
+            Message.objects.filter(id=m.id).update(rapidpro_status=True)
+            sent += 1
+
+        return sent
 
     @classmethod
     def update_message(cls, msg_line):
@@ -319,11 +363,15 @@ class Notification(models.Model):
         contact = contact
         text = msg_line[first_appearance + 5:-1]
         sent_date = msg_line[:first_appearance + 3]
-        uuid = hashlib.md5(str(contact.number + sent_date)).hexdigest()
-        if cls.notification_exists(uuid=uuid):
+
+        if contact is None:
             pass
         else:
-            cls.objects.create(uuid=uuid, contact=contact, text=text, log=log, sent_date=sent_date)
+            uuid = hashlib.md5(str(contact.number + sent_date)).hexdigest()
+            if cls.notification_exists(uuid=uuid):
+                pass
+            else:
+                cls.objects.create(uuid=uuid, contact=contact, text=text, log=log, sent_date=sent_date)
         return
 
     @classmethod

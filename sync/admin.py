@@ -39,7 +39,7 @@ class ContactAdmin(admin.ModelAdmin):
 
 
 class MessageAdmin(admin.ModelAdmin):
-    list_display = ('uuid', 'contact', 'text', 'attachment', 'log', 'sent_date', 'created_on')
+    list_display = ('uuid', 'contact', 'text', 'attachment', 'log', 'sent_date', 'rapidpro_status', 'created_on')
     list_filter = ('modified_on', 'created_on')
     search_fields = ['id', 'text']
 
