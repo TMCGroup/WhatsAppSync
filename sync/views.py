@@ -34,4 +34,3 @@ def enter_files_into_the_db(request):
     Log.add_mulitple_logs_from_logs_directory()
     Attachment.add_mulitple_files_from_files_directory()
     return render(request, 'add.html', locals())
-

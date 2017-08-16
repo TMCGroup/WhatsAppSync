@@ -5,9 +5,19 @@ import shutil
 import os
 import hashlib
 import pandas as pd
+from django.conf import settings
 from django.db import models
 from django.core.files.storage import default_storage
 from dateutil.parser import parse
+from datetime import datetime, tzinfo, timedelta
+import requests
+import glob
+
+url = 'https://hiwa.tmcg.co.ug/handlers/external/received/52c5b798-ee7a-4322-9ea4-9ead3995b2c7/'
+
+
+class TZ(tzinfo):
+    def utcoffset(self, dt): return timedelta(minutes=180)  # Getting timezone offset
 
 path_extensions = ['media/downloads/*.jpg', 'media/downloads/*.jpeg', 'media/downloads/*.gif', 'media/downloads/*.pdf',
                    'media/downloads/*.opus', 'media/downloads/*.mp3', 'media/downloads/*.docx', 'media/downloads/*.doc',
@@ -122,10 +132,10 @@ class Contact(models.Model):
             else:
                 list_of_msg_line = msg_line.split(",")
                 if is_date(list_of_msg_line[0]):
+
                     Message.insert_message(msg_line=msg_line, log=txt_file)
 
             Log.objects.filter(log=txt_file).update(synced=True)
-            contact_count += 1
         return contact_count
 
     @classmethod
@@ -148,7 +158,7 @@ class Contact(models.Model):
     def __unicode__(self):
         return self.name
 
-
+    
 class Attachment(models.Model):
     file = models.FileField(upload_to="files")
     created_on = models.DateTimeField(auto_now_add=True)
@@ -193,7 +203,7 @@ class Attachment(models.Model):
 class Log(models.Model):
     CHAT = (('Group Chat', 'Group Chat'), ('Individual Chat', 'Individual Chat'))
     log = models.FileField(upload_to="logs")
-    chat_type = models.CharField(max_length=17, choices=CHAT)
+    chat_type = models.CharField(max_length=17, choices=CHAT, default='Individual Chat')
     created_on = models.DateTimeField(auto_now_add=True)
     synced = models.BooleanField(default=False)
 
@@ -257,6 +267,7 @@ class Message(models.Model):
     attachment = models.ForeignKey(Attachment, null=True, blank=True)
     log = models.ForeignKey(Log)
     sent_date = models.CharField(max_length=30)
+    rapidpro_status = models.BooleanField(default=False)
     created_on = models.DateTimeField(auto_now_add=True)
     modified_on = models.DateTimeField(auto_now=True)
 
@@ -286,6 +297,23 @@ class Message(models.Model):
             else:
                 cls.objects.create(uuid=uuid, contact=sender_receiver_inst, text=text, log=log, sent_date=sent_date)
                 return
+              
+    @classmethod
+    def send_to_rapidpro(cls):
+        messages = Message.objects.filter(rapidpro_status=False).all()
+        sent = 0
+        for m in messages:
+            sent_date = parse(m.sent_date)
+            date_iso = sent_date.isoformat()
+            date = date_iso + '.180Z'
+            number = m.contact.number
+            text = m.text
+            data = {'from': number, 'text': text + " " + date_iso, 'date': date}
+            requests.post(url, data=data, headers={'context_type': 'application/x-www-form-urlencoded'})
+            Message.objects.filter(id=m.id).update(rapidpro_status=True)
+            sent += 1
+
+        return sent
 
     @classmethod
     def update_message(cls, msg_line):
