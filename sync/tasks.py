@@ -5,7 +5,7 @@ from celery import shared_task
 
 @shared_task
 def downloadattach():
-    ServerDetails.sync_data()
+    ServerDetail.sync_data()
     return
 
 
