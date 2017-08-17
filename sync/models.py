@@ -30,7 +30,7 @@ class TZ(tzinfo):
     def utcoffset(self, dt): return timedelta(minutes=180)  # Getting timezone offset
 
 
-class ServerDetails(models.Model):
+class ServerDetail(models.Model):
     owner = models.CharField(max_length=100)
     user_name = models.CharField(max_length=100)
     password = models.CharField(max_length=100)
@@ -97,7 +97,7 @@ class Contact(models.Model):
 
     @classmethod
     def read_contact_csv(cls):
-        csv_files = Contact_csv.objects.filter(synced=False).first()
+        csv_files = ContactCsv.objects.filter(synced=False).first()
         df = pd.read_csv('media/' + str(csv_files.csv_log), usecols=[0, 30], header=None, skiprows=1)
         df.dropna(axis=0, how='any')
         dic = dict(zip(df[0], df[30]))
@@ -251,9 +251,6 @@ class Log(models.Model):
             for filename in glob.iglob(path_extension):
                 with open(str(filename)) as txtfile:
                     last_date = (txtfile.readlines()[-1]).split("-", 1)[0][:-1]
-                    # if is_date((txtfile.readlines()[-1]).split("-", 1)[0][:-1].split(",", 1)[0]) is True:
-                    #     last_date = (txtfile.readlines()[-1]).split("-", 1)[0][:-1]
-                    # else:
 
                 cleaned_filename = os.path.join(*(filename.split(os.path.sep)[1:]))
                 filename_split = cleaned_filename.split(".", 1)
@@ -313,7 +310,7 @@ class Message(models.Model):
                 else:
                     cls.objects.create(uuid=uuid, contact=sender_receiver_inst, text=text, log=log, sent_date=sent_date)
                     return
-                
+
     @classmethod
     def send_to_rapidpro(cls):
         messages = Message.objects.filter(rapidpro_status=False).all()
@@ -390,7 +387,7 @@ def is_date(string):
         return False
 
 
-class Contact_csv(models.Model):
+class ContactCsv(models.Model):
     csv_log = models.FileField(upload_to="csv")
     created_on = models.DateTimeField(auto_now_add=True)
     synced = models.BooleanField(default=False)

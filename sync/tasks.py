@@ -1,5 +1,5 @@
 from __future__ import absolute_import
-from .models import Log, ServerDetails, Contact, Attachment, Message
+from .models import Log, ServerDetail, Contact, Attachment, Message
 from celery import shared_task
 
 

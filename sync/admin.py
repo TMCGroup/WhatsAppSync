@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Log, Notification, Message, Contact, ServerDetails, Contact_csv, Attachment
+from .models import Log, Notification, Message, Contact, ServerDetail, ContactCsv, Attachment
 
 
 class LogAdmin(admin.ModelAdmin):
@@ -44,10 +44,10 @@ class MessageAdmin(admin.ModelAdmin):
     search_fields = ['id', 'text']
 
 
-admin.site.register(ServerDetails, ServersAdmin)
+admin.site.register(ServerDetail, ServersAdmin)
 admin.site.register(Contact, ContactAdmin)
 admin.site.register(Attachment, AttachmentAdmin)
-admin.site.register(Contact_csv, Csv_ContactAdmin)
+admin.site.register(ContactCsv, Csv_ContactAdmin)
 admin.site.register(Log, LogAdmin)
 admin.site.register(Notification, NotificationAdmin)
 admin.site.register(Message, MessageAdmin)

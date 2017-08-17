@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponse
 from django.conf import settings
-from .models import Log, ServerDetails, Contact, Attachment, Message
+from .models import Log, ServerDetail, Contact, Attachment, Message
 
 
 def downloadattach(request):
