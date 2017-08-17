@@ -18,7 +18,7 @@ def move_files():
 
 @shared_task
 def closeconnection():
-    ServerDetails.close_connection()
+    ServerDetail.close_connection()
     return
 
 
