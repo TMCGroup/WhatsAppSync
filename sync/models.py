@@ -82,6 +82,11 @@ class Workspace(models.Model):
     host = models.CharField(max_length=50)
     key = models.CharField(max_length=50)
     external_channel_receive_url = models.URLField()
+    active_status = models.BooleanField(default=True)
+
+    @classmethod
+    def get_workspace(cls):
+        return cls.objects.filter(active_status=True).first()
 
 
 class Contact(models.Model):
@@ -307,6 +312,8 @@ class Message(models.Model):
     @classmethod
     def send_to_rapidpro(cls):
         messages = Message.objects.filter(rapidpro_status=False).all()
+        tmcg_whatsapp_workspace = Workspace.get_workspace()
+        external_channel_url = tmcg_whatsapp_workspace.external_channel_receive_url
         sent = 0
         for m in messages:
             sent_date = parse(m.sent_date)
@@ -315,7 +322,7 @@ class Message(models.Model):
             number = m.contact.number
             text = m.text
             data = {'from': number, 'text': text + " " + date_iso, 'date': date}
-            requests.post(url, data=data, headers={'context_type': 'application/x-www-form-urlencoded'})
+            requests.post(url=external_channel_url, data=data, headers={'context_type': 'application/x-www-form-urlencoded'})
             Message.objects.filter(id=m.id).update(rapidpro_status=True)
             sent += 1
 
