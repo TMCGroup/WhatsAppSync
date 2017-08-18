@@ -7,3 +7,4 @@ from celery import shared_task
 def call_data():
     Log.get_log_file()
     return
+
