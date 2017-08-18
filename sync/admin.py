@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Log, Notification, Message, Contact, ServerDetails, Contact_csv, Attachment
+from .models import Log, Notification, Message, Contact, Server, ContactCsv, Attachment, Workspace
 
 
 class LogAdmin(admin.ModelAdmin):
@@ -8,7 +8,7 @@ class LogAdmin(admin.ModelAdmin):
     search_fields = ['log']
 
 
-class ServersAdmin(admin.ModelAdmin):
+class ServerAdmin(admin.ModelAdmin):
     list_display = ('id', 'owner', 'user_name', 'host', 'status', 'created_on')
     list_filter = ['status', 'created_on']
     search_fields = ['owner', 'host']
@@ -20,7 +20,7 @@ class NotificationAdmin(admin.ModelAdmin):
     search_fields = ['id']
 
 
-class Csv_ContactAdmin(admin.ModelAdmin):
+class ContactCsvAdmin(admin.ModelAdmin):
     list_display = ('id', 'csv_log', 'synced', 'created_on')
     list_filter = ('created_on', 'synced')
     search_fields = ['id']
@@ -44,10 +44,17 @@ class MessageAdmin(admin.ModelAdmin):
     search_fields = ['id', 'text']
 
 
-admin.site.register(ServerDetails, ServersAdmin)
+class WorkspaceAdmin(admin.ModelAdmin):
+    list_display = ('name','host', 'key', 'external_channel_receive_url', 'active_status')
+    list_filter = ('modified_on', 'created_on')
+    search_fields = ['id', 'name']
+
+
+admin.site.register(Server, ServerAdmin)
 admin.site.register(Contact, ContactAdmin)
 admin.site.register(Attachment, AttachmentAdmin)
-admin.site.register(Contact_csv, Csv_ContactAdmin)
+admin.site.register(ContactCsv, ContactCsvAdmin)
 admin.site.register(Log, LogAdmin)
 admin.site.register(Notification, NotificationAdmin)
 admin.site.register(Message, MessageAdmin)
+admin.site.register(Workspace, WorkspaceAdmin)

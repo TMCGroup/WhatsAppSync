@@ -13,11 +13,18 @@ from datetime import datetime, tzinfo, timedelta
 import requests
 import glob
 
-url = 'https://hiwa.tmcg.co.ug/handlers/external/received/52c5b798-ee7a-4322-9ea4-9ead3995b2c7/'
+
+def is_date(string):
+    try:
+        parse(string)
+        return True
+    except ValueError:
+        return False
 
 
 class TZ(tzinfo):
     def utcoffset(self, dt): return timedelta(minutes=180)  # Getting timezone offset
+
 
 path_extensions = ['media/downloads/*.jpg', 'media/downloads/*.jpeg', 'media/downloads/*.gif', 'media/downloads/*.pdf',
                    'media/downloads/*.opus', 'media/downloads/*.mp3', 'media/downloads/*.docx', 'media/downloads/*.doc',
@@ -32,7 +39,7 @@ path_ext_files = ['media/files/*.jpg', 'media/files/*.jpeg', 'media/files/*.gif'
                   'media/files/*.opus', ]
 
 
-class ServerDetails(models.Model):
+class Server(models.Model):
     owner = models.CharField(max_length=100)
     user_name = models.CharField(max_length=100)
     password = models.CharField(max_length=100)
@@ -79,10 +86,13 @@ class ServerDetails(models.Model):
 
 
 class Workspace(models.Model):
+    name = models.CharField(max_length=50)
     host = models.CharField(max_length=50)
     key = models.CharField(max_length=50)
     external_channel_receive_url = models.URLField()
     active_status = models.BooleanField(default=True)
+    created_on = models.DateTimeField(auto_now_add=True)
+    modified_on = models.DateTimeField(auto_now=True)
 
     @classmethod
     def get_workspace(cls):
@@ -99,7 +109,7 @@ class Contact(models.Model):
 
     @classmethod
     def read_contact_csv(cls):
-        csv_files = Contact_csv.objects.filter(synced=False).first()
+        csv_files = ContactCsv.objects.filter(synced=False).first()
         df = pd.read_csv('media/' + str(csv_files.csv_log), usecols=[0, 30], header=None, skiprows=1)
         df.dropna(axis=0, how='any')
         dic = dict(zip(df[0], df[30]))
@@ -375,15 +385,7 @@ class Notification(models.Model):
         return self.text
 
 
-def is_date(string):
-    try:
-        parse(string)
-        return True
-    except ValueError:
-        return False
-
-
-class Contact_csv(models.Model):
+class ContactCsv(models.Model):
     csv_log = models.FileField(upload_to="csv")
     created_on = models.DateTimeField(auto_now_add=True)
     synced = models.BooleanField(default=False)
@@ -408,14 +410,10 @@ class Contact_csv(models.Model):
                 files_added += 1
         return files_added
 
-
-def is_date(string):
-    try:
-        parse(string)
-        return True
-    except ValueError:
-        return False
-
     def __unicode__(self):
         return str(self.csv_log)
+
+
+
+
 
