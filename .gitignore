@@ -1,12 +1,8 @@
 
-.gitignore
 .idea
 db.sqlite3
 media/logs/*
-!media/logs/.gitkeep
 WhatsAppSync/settings.py
 *.pyc
-.travis.yml
-
-
-
+/celerybeat.pid
+/celerybeat-schedule.db

@@ -14,6 +14,12 @@ class TZ(tzinfo):
     def utcoffset(self, dt): return timedelta(minutes=180)  # Getting timezone offset
 
 
+class Workspace(models.Model):
+    host = models.CharField(max_length=50)
+    key = models.CharField(max_length=50)
+    external_channel_receive_url = models.URLField()
+
+
 class Contact(models.Model):
     number = models.CharField(max_length=15)
     name = models.CharField(max_length=50)
@@ -141,7 +147,8 @@ class Log(models.Model):
 
     @classmethod
     def add_mulitple_logs_from_logs_directory(cls):
-        path_extensions = ['media/logs/*.txt', 'media/logs/*.jpg', 'media/logs/*.jpeg', 'media/logs/*.gif', ]
+        path_extensions = ['media/logs/*.txt', 'media/logs/*.jpg', 'media/logs/*.jpeg', 'media/logs/*.gif',
+                           'media/logs/*.pdf', 'media/logs/*.vcf']
         files_added = 0
         for path_extension in path_extensions:
             for filename in glob.iglob(path_extension):
