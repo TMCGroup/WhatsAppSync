@@ -4,6 +4,8 @@ import email
 import shutil
 import os
 import hashlib
+from datetime import datetime, tzinfo, timedelta
+import requests
 import pandas as pd
 from django.conf import settings
 from django.db import models
@@ -19,6 +21,8 @@ url = 'https://hiwa.tmcg.co.ug/handlers/external/received/52c5b798-ee7a-4322-9ea
 class TZ(tzinfo):
     def utcoffset(self, dt): return timedelta(minutes=180)  # Getting timezone offset
 
+url = 'https://hiwa.tmcg.co.ug/handlers/external/received/52c5b798-ee7a-4322-9ea4-9ead3995b2c7/'
+
 path_extensions = ['media/downloads/*.jpg', 'media/downloads/*.jpeg', 'media/downloads/*.gif', 'media/downloads/*.pdf',
                    'media/downloads/*.opus', 'media/downloads/*.mp3', 'media/downloads/*.docx', 'media/downloads/*.doc',
                    'media/downloads/*.odt', 'media/downloads/*.ics', 'media/downloads/*.PNG', 'media/downloads/*.aac',
@@ -32,7 +36,11 @@ path_ext_files = ['media/files/*.jpg', 'media/files/*.jpeg', 'media/files/*.gif'
                   'media/files/*.opus', ]
 
 
-class ServerDetails(models.Model):
+class TZ(tzinfo):
+    def utcoffset(self, dt): return timedelta(minutes=180)  # Getting timezone offset
+
+
+class ServerDetail(models.Model):
     owner = models.CharField(max_length=100)
     user_name = models.CharField(max_length=100)
     password = models.CharField(max_length=100)
@@ -74,6 +82,17 @@ class ServerDetails(models.Model):
                 for emailid in items:
                     cls.download_attachment(host=host, emailid=emailid)
 
+    @classmethod
+    def close_connection(cls):
+        data = cls.objects.filter(status=True).all()
+
+        for d in data:
+            host = imaplib.IMAP4_SSL(d.host)
+            host.login(d.user_name, d.password)
+            host.select()
+            host.close()
+        return
+
     def __unicode__(self):
         return self.owner
 
@@ -88,7 +107,7 @@ class Contact(models.Model):
 
     @classmethod
     def read_contact_csv(cls):
-        csv_files = Contact_csv.objects.filter(synced=False).first()
+        csv_files = ContactCsv.objects.filter(synced=False).first()
         df = pd.read_csv('media/' + str(csv_files.csv_log), usecols=[0, 30], header=None, skiprows=1)
         df.dropna(axis=0, how='any')
         dic = dict(zip(df[0], df[30]))
@@ -117,8 +136,12 @@ class Contact(models.Model):
     @classmethod
     def read_txt_log(cls, txt_file):
         contact_count = 0
+        name = ''
         with open('media/' + str(txt_file.log)) as txtfile:
-            name = (txtfile.readlines()[2]).split("-", 1)[1][1:].split(":", 1)[0]
+            try:
+                name = (txtfile.readlines()[2]).split("-", 1)[1][1:].split(":", 1)[0]
+            except IndexError:
+                pass
         ct_inst = cls.objects.filter(name=name).first()
         for msg_line in default_storage.open(os.path.join(str(txt_file)), 'r'):
 
@@ -238,9 +261,6 @@ class Log(models.Model):
             for filename in glob.iglob(path_extension):
                 with open(str(filename)) as txtfile:
                     last_date = (txtfile.readlines()[-1]).split("-", 1)[0][:-1]
-                    # if is_date((txtfile.readlines()[-1]).split("-", 1)[0][:-1].split(",", 1)[0]) is True:
-                    #     last_date = (txtfile.readlines()[-1]).split("-", 1)[0][:-1]
-                    # else:
 
                 cleaned_filename = os.path.join(*(filename.split(os.path.sep)[1:]))
                 filename_split = cleaned_filename.split(".", 1)
@@ -282,22 +302,27 @@ class Message(models.Model):
         sender_receiver_inst = Contact.objects.filter(name=sender_receiver).first()
         text = msg_line[second_appearance + 1:]
         sent_date = msg_line[:first_appearance + 3]
-        uuid = hashlib.md5(str(sender_receiver_inst.number) + str(sent_date)).hexdigest()
-        if cls.message_exists(uuid):
+        if sender_receiver_inst is None:
             pass
         else:
-            if "(file attached)" in text:
-                ext_split = text.split(".", 1)[1].split("(", 1)[0][:-1]
-                if ext_split in attachment_ext:
-                    attachment = 'files/' + text[1:-17]
-                    attachment_instance = Attachment.objects.filter(file=attachment).first()
-                    cls.objects.create(uuid=uuid, contact=sender_receiver_inst, text=text,
-                                       attachment=attachment_instance,
-                                       log=log, sent_date=sent_date)
+            uuid = hashlib.md5(str(sender_receiver_inst.number) + str(sent_date)).hexdigest()
+            if cls.message_exists(uuid):
+                pass
             else:
-                cls.objects.create(uuid=uuid, contact=sender_receiver_inst, text=text, log=log, sent_date=sent_date)
-                return
-              
+
+                if "(file attached)" in text:
+                    ext_split = text.split(".", 1)[1].split("(", 1)[0][:-1]
+                    if ext_split in attachment_ext:
+                        attachment = 'files/' + text[1:-17]
+                        attachment_instance = Attachment.objects.filter(file=attachment).first()
+                        cls.objects.create(uuid=uuid, contact=sender_receiver_inst, text=text,
+                                           attachment=attachment_instance,
+                                           log=log, sent_date=sent_date)
+                else:
+                    cls.objects.create(uuid=uuid, contact=sender_receiver_inst, text=text, log=log, sent_date=sent_date)
+                    return
+
+                  
     @classmethod
     def send_to_rapidpro(cls):
         messages = Message.objects.filter(rapidpro_status=False).all()
@@ -347,11 +372,15 @@ class Notification(models.Model):
         contact = contact
         text = msg_line[first_appearance + 5:-1]
         sent_date = msg_line[:first_appearance + 3]
-        uuid = hashlib.md5(str(contact.number + sent_date)).hexdigest()
-        if cls.notification_exists(uuid=uuid):
+
+        if contact is None:
             pass
         else:
-            cls.objects.create(uuid=uuid, contact=contact, text=text, log=log, sent_date=sent_date)
+            uuid = hashlib.md5(str(contact.number + sent_date)).hexdigest()
+            if cls.notification_exists(uuid=uuid):
+                pass
+            else:
+                cls.objects.create(uuid=uuid, contact=contact, text=text, log=log, sent_date=sent_date)
         return
 
     @classmethod
@@ -370,7 +399,7 @@ def is_date(string):
         return False
 
 
-class Contact_csv(models.Model):
+class ContactCsv(models.Model):
     csv_log = models.FileField(upload_to="csv")
     created_on = models.DateTimeField(auto_now_add=True)
     synced = models.BooleanField(default=False)
