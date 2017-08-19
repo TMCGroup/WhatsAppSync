@@ -7,9 +7,19 @@ import hashlib
 from datetime import datetime, tzinfo, timedelta
 import requests
 import pandas as pd
+from django.conf import settings
 from django.db import models
 from django.core.files.storage import default_storage
 from dateutil.parser import parse
+from datetime import datetime, tzinfo, timedelta
+import requests
+import glob
+
+url = 'https://hiwa.tmcg.co.ug/handlers/external/received/52c5b798-ee7a-4322-9ea4-9ead3995b2c7/'
+
+
+class TZ(tzinfo):
+    def utcoffset(self, dt): return timedelta(minutes=180)  # Getting timezone offset
 
 url = 'https://hiwa.tmcg.co.ug/handlers/external/received/52c5b798-ee7a-4322-9ea4-9ead3995b2c7/'
 
@@ -145,10 +155,10 @@ class Contact(models.Model):
             else:
                 list_of_msg_line = msg_line.split(",")
                 if is_date(list_of_msg_line[0]):
+
                     Message.insert_message(msg_line=msg_line, log=txt_file)
 
             Log.objects.filter(log=txt_file).update(synced=True)
-            contact_count += 1
         return contact_count
 
     @classmethod
@@ -171,7 +181,7 @@ class Contact(models.Model):
     def __unicode__(self):
         return self.name
 
-
+    
 class Attachment(models.Model):
     file = models.FileField(upload_to="files")
     created_on = models.DateTimeField(auto_now_add=True)
@@ -216,7 +226,7 @@ class Attachment(models.Model):
 class Log(models.Model):
     CHAT = (('Group Chat', 'Group Chat'), ('Individual Chat', 'Individual Chat'))
     log = models.FileField(upload_to="logs")
-    chat_type = models.CharField(max_length=17, choices=CHAT)
+    chat_type = models.CharField(max_length=17, choices=CHAT, default='Individual Chat')
     created_on = models.DateTimeField(auto_now_add=True)
     synced = models.BooleanField(default=False)
 
@@ -299,6 +309,7 @@ class Message(models.Model):
             if cls.message_exists(uuid):
                 pass
             else:
+
                 if "(file attached)" in text:
                     ext_split = text.split(".", 1)[1].split("(", 1)[0][:-1]
                     if ext_split in attachment_ext:
@@ -311,6 +322,7 @@ class Message(models.Model):
                     cls.objects.create(uuid=uuid, contact=sender_receiver_inst, text=text, log=log, sent_date=sent_date)
                     return
 
+                  
     @classmethod
     def send_to_rapidpro(cls):
         messages = Message.objects.filter(rapidpro_status=False).all()

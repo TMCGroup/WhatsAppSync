@@ -21,7 +21,7 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks()
 
 app = Celery('tasks',
-             broker='amqp://',
+             broker='amqp://myuser:mypassword@localhost:5672/myvhost',
              backend='rpc://',
              include=['sync.tasks'])
 

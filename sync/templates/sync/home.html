@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+{% for message in messages%}
+
+{{message.contact}}
+{{message.text}}
+{{message.sent_date}}
+
+{% endfor %}
+
+</body>
+</html>

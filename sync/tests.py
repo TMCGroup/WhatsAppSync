@@ -39,6 +39,15 @@ class TestMessage(TestCase):
 
         self.assertEquals(Message.objects.count(), initial_message_count + message_count)
 
+    def test_send_to_rapidpro(self):
+        contact = Contact.objects.first()
+        Message.insert_message(text="Hello there!", sent_date="12/31/16, 19:20", contact=contact)
+        message_count = Message.objects.filter(rapidpro_status=True).count()
+        Message.send_to_rapidpro()
+        sent_message_count = Message.objects.filter(rapidpro_status=True).count()
+
+        self.assertEquals(sent_message_count, message_count + sent_message_count)
+
 
 class TestContact(TestCase):
     def setUp(self):

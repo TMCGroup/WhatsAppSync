@@ -1,7 +1,13 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
 
 .gitignore
 WhatsAppSync/settings.py
 sync/migrations/*
+
 celerybeat.pid
 
 # Byte-compiled / optimized / DLL files
@@ -9,6 +15,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 .pyc
+
 # C extensions
 *.so
 
@@ -17,6 +24,8 @@ __pycache__/
 build/
 develop-eggs/
 dist/
+=======
+downloads/
 eggs/
 .eggs/
 lib/
