@@ -2,7 +2,7 @@
 WhatsAppSync
 This is a project to read and insert whatsapp conversations and contacts into a database.
 
-worker: celery worker -A WhatsAppSync --loglevel=INFO   
+worker: celery worker -A WhatsAppSync --loglevel=INFO
 run the worker from the root directory of the project
 
 scheduler: celery -A WhatsAppSync beat -l info -S django

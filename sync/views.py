@@ -39,4 +39,3 @@ def send_rapidpro_data(request):
 def call_center_contacts(request):
     contacts = Contact.read_contact_csv()
     return render(request, 'contacts.html', locals())
-

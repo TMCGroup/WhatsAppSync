@@ -31,6 +31,7 @@ ALLOWED_HOSTS = ['ngrok', 'e0d16073.ngrok.io',
 
 
 
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -133,8 +134,9 @@ ADMIN_SITE_INDEX = "WhatsApp to RapidPro Syncroniser"
 TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'
 
 MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-STATIC_ROOT = os.path.join(BASE_DIR, 'static')
-
 
