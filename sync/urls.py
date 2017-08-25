@@ -7,6 +7,7 @@ urlpatterns = [
     url(r'^read/$', views.readlogs),
     url(r'^move/$', views.move_files),
     url(r'^add/$', views.enter_files_into_the_db),
-    url(r'^contacts/$', views.call_center_contacts),
+    url(r'^contact/$', views.call_center_contacts),
+    url(r'^send/$', views.send_rapidpro_data),
 
 ]
