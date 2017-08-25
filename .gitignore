@@ -8,6 +8,7 @@ WhatsAppSync/settings.py
 
 .gitignore
 sync/migrations/*
+static*
 
 celerybeat.pid
 
