@@ -9,7 +9,7 @@ def download_attach(request):
     return render(request, 'download_attach.html', locals())
 
 
-def closeconnection(request):
+def close_connection(request):
     Server.close_connection()
     return render(request, 'close.html', locals())
 
@@ -17,11 +17,6 @@ def closeconnection(request):
 def call_center_contacts(request):
     contacts = Contact.read_contact_csv()
     return render(request, 'contacts.html', locals())
-
-
-def read_logs(request):
-    contacts = Log.get_log_file()
-    return render(request, 'read_logs.html', locals())
 
 
 def move_files(request):
@@ -36,9 +31,9 @@ def enter_files_into_the_db(request):
     return render(request, 'add.html', locals())
 
 
-def readlogs(request):
+def read_logs(request):
     contacts = Log.get_log_file()
-    return render(request, 'readlogs.html', locals())
+    return render(request, 'read_logs.html', locals())
 
 
 def send_rapidpro_data(request):

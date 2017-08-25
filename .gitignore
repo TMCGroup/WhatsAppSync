@@ -1,10 +1,3 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
-
-
-
 .idea
 db.sqlite3
 media/logs/*
@@ -14,14 +7,12 @@ WhatsAppSync/settings.py
 /celerybeat-schedule.db
 
 .gitignore
-WhatsAppSync/settings.py
 sync/migrations/*
 
 celerybeat.pid
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[cod]
 *$py.class
 .pyc
 

@@ -23,6 +23,12 @@ def closeconnection():
 
 
 @shared_task
+def call_center_contacts():
+    Contact.read_contact_csv()
+    return
+
+
+@shared_task
 def enter_files_into_the_db():
     Log.add_mulitple_logs_from_logs_directory()
     Attachment.add_mulitple_files_from_files_directory()
@@ -38,10 +44,4 @@ def readlogs():
 @shared_task
 def send_rapidpro_data():
     Message.send_to_rapidpro()
-    return
-
-
-@shared_task
-def call_center_contacts():
-    Contact.read_contact_csv()
     return
