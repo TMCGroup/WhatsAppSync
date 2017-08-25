@@ -15,13 +15,18 @@ from datetime import datetime, tzinfo, timedelta
 import requests
 import glob
 
-url = 'https://hiwa.tmcg.co.ug/handlers/external/received/52c5b798-ee7a-4322-9ea4-9ead3995b2c7/'
+
+def is_date(string):
+    try:
+        parse(string)
+        return True
+    except ValueError:
+        return False
 
 
 class TZ(tzinfo):
     def utcoffset(self, dt): return timedelta(minutes=180)  # Getting timezone offset
 
-url = 'https://hiwa.tmcg.co.ug/handlers/external/received/52c5b798-ee7a-4322-9ea4-9ead3995b2c7/'
 
 path_extensions = ['media/downloads/*.jpg', 'media/downloads/*.jpeg', 'media/downloads/*.gif', 'media/downloads/*.pdf',
                    'media/downloads/*.opus', 'media/downloads/*.mp3', 'media/downloads/*.docx', 'media/downloads/*.doc',
@@ -40,7 +45,7 @@ class TZ(tzinfo):
     def utcoffset(self, dt): return timedelta(minutes=180)  # Getting timezone offset
 
 
-class ServerDetail(models.Model):
+class Server(models.Model):
     owner = models.CharField(max_length=100)
     user_name = models.CharField(max_length=100)
     password = models.CharField(max_length=100)
@@ -95,6 +100,20 @@ class ServerDetail(models.Model):
 
     def __unicode__(self):
         return self.owner
+
+
+class Workspace(models.Model):
+    name = models.CharField(max_length=50)
+    host = models.CharField(max_length=50)
+    key = models.CharField(max_length=50)
+    external_channel_receive_url = models.URLField()
+    active_status = models.BooleanField(default=True)
+    created_on = models.DateTimeField(auto_now_add=True)
+    modified_on = models.DateTimeField(auto_now=True)
+
+    @classmethod
+    def get_workspace(cls):
+        return cls.objects.filter(active_status=True).first()
 
 
 class Contact(models.Model):
@@ -155,7 +174,6 @@ class Contact(models.Model):
             else:
                 list_of_msg_line = msg_line.split(",")
                 if is_date(list_of_msg_line[0]):
-
                     Message.insert_message(msg_line=msg_line, log=txt_file)
 
             Log.objects.filter(log=txt_file).update(synced=True)
@@ -181,7 +199,7 @@ class Contact(models.Model):
     def __unicode__(self):
         return self.name
 
-    
+
 class Attachment(models.Model):
     file = models.FileField(upload_to="files")
     created_on = models.DateTimeField(auto_now_add=True)
@@ -322,10 +340,11 @@ class Message(models.Model):
                     cls.objects.create(uuid=uuid, contact=sender_receiver_inst, text=text, log=log, sent_date=sent_date)
                     return
 
-                  
     @classmethod
     def send_to_rapidpro(cls):
         messages = Message.objects.filter(rapidpro_status=False).all()
+        tmcg_whatsapp_workspace = Workspace.get_workspace()
+        external_channel_url = tmcg_whatsapp_workspace.external_channel_receive_url
         sent = 0
         for m in messages:
             sent_date = parse(m.sent_date)
@@ -334,7 +353,8 @@ class Message(models.Model):
             number = m.contact.number
             text = m.text
             data = {'from': number, 'text': text + " " + date_iso, 'date': date}
-            requests.post(url, data=data, headers={'context_type': 'application/x-www-form-urlencoded'})
+            requests.post(url=external_channel_url, data=data,
+                          headers={'context_type': 'application/x-www-form-urlencoded'})
             Message.objects.filter(id=m.id).update(rapidpro_status=True)
             sent += 1
 
@@ -391,14 +411,6 @@ class Notification(models.Model):
         return self.text
 
 
-def is_date(string):
-    try:
-        parse(string)
-        return True
-    except ValueError:
-        return False
-
-
 class ContactCsv(models.Model):
     csv_log = models.FileField(upload_to="csv")
     created_on = models.DateTimeField(auto_now_add=True)
@@ -411,6 +423,18 @@ class ContactCsv(models.Model):
             return csv_file
         else:
             print("All files synced")
+
+    @classmethod
+    def add_mulitple_logs_from_logs_directory(cls):
+        path_extensions = ['media/logs/*.txt', 'media/logs/*.jpg', 'media/logs/*.jpeg', 'media/logs/*.gif',
+                           'media/logs/*.pdf', 'media/logs/*.vcf']
+        files_added = 0
+        for path_extension in path_extensions:
+            for filename in glob.iglob(path_extension):
+                cleaned_filename = os.path.join(*(filename.split(os.path.sep)[1:]))
+                Log.objects.create(log=cleaned_filename)
+                files_added += 1
+        return files_added
 
     def __unicode__(self):
         return str(self.csv_log)
