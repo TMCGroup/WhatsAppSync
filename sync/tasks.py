@@ -1,11 +1,11 @@
 from __future__ import absolute_import
-from .models import Log, ServerDetail, Contact, Attachment, Message
+from .models import Log, Server, Contact, Attachment, Message
 from celery import shared_task
 
 
 @shared_task
 def downloadattach():
-    ServerDetail.sync_data()
+    Server.sync_data()
     return
 
 
@@ -18,7 +18,7 @@ def move_files():
 
 @shared_task
 def closeconnection():
-    ServerDetail.close_connection()
+    Server.close_connection()
     return
 
 

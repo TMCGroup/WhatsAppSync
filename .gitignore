@@ -4,6 +4,15 @@ __pycache__/
 *$py.class
 
 
+
+.idea
+db.sqlite3
+media/logs/*
+WhatsAppSync/settings.py
+*.pyc
+/celerybeat.pid
+/celerybeat-schedule.db
+
 .gitignore
 WhatsAppSync/settings.py
 sync/migrations/*
@@ -111,6 +120,4 @@ ENV/
 
 # mypy
 .mypy_cache/
-.idea
-db.sqlite3
-media
+
