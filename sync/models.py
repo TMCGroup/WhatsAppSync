@@ -155,26 +155,23 @@ class Contact(models.Model):
     @classmethod
     def read_txt_log(cls, txt_file):
         contact_count = 0
-        name = ''
-        with open('media/' + str(txt_file.log)) as txtfile:
-            try:
-                name = (txtfile.readlines()[2]).split("-", 1)[1][1:].split(":", 1)[0]
-            except IndexError:
-                pass
+        name = str(txt_file.log).split("with", 1)[1][2:].split("_", 1)[0]
         ct_inst = cls.objects.filter(name=name).first()
-        for msg_line in default_storage.open(os.path.join(str(txt_file)), 'r'):
 
-            first_appearance = msg_line.find(":")
-            if ":" not in msg_line[first_appearance + 1:]:
-                list_of_msg_line = msg_line.split(",")
-                if is_date(list_of_msg_line[0]):
-                    Notification.insert_notification(contact=ct_inst, msg_line=msg_line, log=txt_file)
-                    # else:
-                    #     Message.update_message(msg_line=msg_line)
-            else:
-                list_of_msg_line = msg_line.split(",")
-                if is_date(list_of_msg_line[0]):
-                    Message.insert_message(msg_line=msg_line, log=txt_file)
+        with open('media/' + str(txt_file.log)) as txtfile:
+
+            for line_num, line_msg in enumerate(txtfile):
+                first_appearance = line_msg.find(":")
+                if ":" not in line_msg[first_appearance + 1:]:
+                    list_of_msg_line = line_msg.split(",")
+                    if is_date(list_of_msg_line[0]):
+                        Notification.insert_notification(contact=ct_inst, msg_line=line_msg, line=line_num, log=txt_file)
+                        # else:
+                        #     Message.update_message(line_msg=line_msg)
+                else:
+                    list_of_msg_line = line_msg.split(",")
+                    if is_date(list_of_msg_line[0]):
+                        Message.insert_message(msg_line=line_msg, line=line_num, log=txt_file)
 
             Log.objects.filter(log=txt_file).update(synced=True)
         return contact_count
@@ -310,7 +307,7 @@ class Message(models.Model):
     modified_on = models.DateTimeField(auto_now=True)
 
     @classmethod
-    def insert_message(cls, msg_line, log):
+    def insert_message(cls, msg_line, line, log):
         attachment_ext = ['jpg', 'jpeg', 'gif', 'pdf', 'opus', 'mp3', 'docx', 'doc', 'odt', 'ics', 'PNG', 'aac', 'vcf',
                           'png', 'xlsx', 'mp4']
 
@@ -321,9 +318,9 @@ class Message(models.Model):
         text = msg_line[second_appearance + 1:]
         sent_date = msg_line[:first_appearance + 3]
         if sender_receiver_inst is None:
-            pass
+            return
         else:
-            uuid = hashlib.md5(str(sender_receiver_inst.number) + str(sent_date)).hexdigest()
+            uuid = hashlib.md5(str(sender_receiver_inst.number) + str(line) + str(sent_date)).hexdigest()
             if cls.message_exists(uuid):
                 pass
             else:
@@ -387,7 +384,7 @@ class Notification(models.Model):
     modified_on = models.DateTimeField(auto_now=True)
 
     @classmethod
-    def insert_notification(cls, contact, msg_line, log):
+    def insert_notification(cls, contact, msg_line, line, log):
         first_appearance = msg_line.find(":")
         contact = contact
         text = msg_line[first_appearance + 5:-1]
@@ -396,7 +393,7 @@ class Notification(models.Model):
         if contact is None:
             pass
         else:
-            uuid = hashlib.md5(str(contact.number + sent_date)).hexdigest()
+            uuid = hashlib.md5(str(contact.number) + str(line) + str(sent_date)).hexdigest()
             if cls.notification_exists(uuid=uuid):
                 pass
             else:
