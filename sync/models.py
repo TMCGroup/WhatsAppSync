@@ -126,55 +126,55 @@ class Contact(models.Model):
 
     @classmethod
     def read_contact_csv(cls):
-        csv_files = ContactCsv.objects.filter(synced=False).first()
-        df = pd.read_csv('media/' + str(csv_files.csv_log), usecols=[0, 30], header=None, skiprows=1)
-        df.dropna(axis=0, how='any')
-        dic = dict(zip(df[0], df[30]))
-        for key, value in dic.iteritems():
-            if ":" not in str(value):
-                uuid = hashlib.md5(str(value)).hexdigest()
-                if cls.contact_exists(uuid=uuid):
-                    cls.objects.filter(uuid=uuid).update(name=str(key), alt_number="")
-                else:
+        csv_file = ContactCsv.objects.filter(synced=False).first()
+        try:
+            df = pd.read_csv('media/' + str(csv_file.csv_log), usecols=[0, 30], header=None, skiprows=1)
+            df.dropna(axis=0, how='any')
+            dic = dict(zip(df[0], df[30]))
+            for key, value in dic.iteritems():
+                if ":" not in str(value):
+                    uuid = hashlib.md5(str(value)).hexdigest()
+                    if cls.contact_exists(uuid=uuid):
+                        cls.objects.filter(uuid=uuid).update(name=str(key), alt_number="")
+                    else:
 
-                    cls.objects.create(uuid=uuid, name=str(key), number=str(value))
-            else:
-                test = str(value).find(":")
-                first = str(value)[:test - 1]
-                second = str(value)[test + 4:]
-                uuid = hashlib.md5(first).hexdigest()
-                if cls.contact_exists(uuid=uuid):
-                    cls.objects.filter(uuid=uuid).update(name=str(key), number=first, alt_number=second)
-                elif cls.second_contact_exists(second):
-                    cls.objects.filter(alt_number=second).update(name=str(key), number=first)
+                        cls.objects.create(uuid=uuid, name=str(key), number=str(value))
                 else:
-                    cls.objects.create(uuid=uuid, name=str(key), number=first, alt_number=second)
-
-        return dic
+                    test = str(value).find(":")
+                    first = str(value)[:test - 1]
+                    second = str(value)[test + 4:]
+                    uuid = hashlib.md5(first).hexdigest()
+                    if cls.contact_exists(uuid=uuid):
+                        cls.objects.filter(uuid=uuid).update(name=str(key), number=first, alt_number=second)
+                    elif cls.second_contact_exists(second):
+                        cls.objects.filter(alt_number=second).update(name=str(key), number=first)
+                    else:
+                        cls.objects.create(uuid=uuid, name=str(key), number=first, alt_number=second)
+            ContactCsv.objects.filter(csv_log=csv_file).update(synced=True)
+            return dic
+        except AttributeError:
+            return
 
     @classmethod
     def read_txt_log(cls, txt_file):
         contact_count = 0
-        name = ''
-        with open('media/' + str(txt_file.log)) as txtfile:
-            try:
-                name = (txtfile.readlines()[2]).split("-", 1)[1][1:].split(":", 1)[0]
-            except IndexError:
-                pass
+        name = str(txt_file.log).split("with", 1)[1][1:].split("_", 1)[0]
         ct_inst = cls.objects.filter(name=name).first()
-        for msg_line in default_storage.open(os.path.join(str(txt_file)), 'r'):
 
-            first_appearance = msg_line.find(":")
-            if ":" not in msg_line[first_appearance + 1:]:
-                list_of_msg_line = msg_line.split(",")
-                if is_date(list_of_msg_line[0]):
-                    Notification.insert_notification(contact=ct_inst, msg_line=msg_line, log=txt_file)
-                    # else:
-                    #     Message.update_message(msg_line=msg_line)
-            else:
-                list_of_msg_line = msg_line.split(",")
-                if is_date(list_of_msg_line[0]):
-                    Message.insert_message(msg_line=msg_line, log=txt_file)
+        with open('media/' + str(txt_file.log)) as txtfile:
+
+            for line_num, line_msg in enumerate(txtfile):
+                first_appearance = line_msg.find(":")
+                if ":" not in line_msg[first_appearance + 1:]:
+                    list_of_msg_line = line_msg.split(",")
+                    if is_date(list_of_msg_line[0]):
+                        Notification.insert_notification(contact=ct_inst, msg_line=line_msg, line=line_num,
+                                                         log=txt_file)
+
+                else:
+                    list_of_msg_line = line_msg.split(",")
+                    if is_date(list_of_msg_line[0]):
+                        Message.insert_message(client=name, msg_line=line_msg, line=line_num, log=txt_file)
 
             Log.objects.filter(log=txt_file).update(synced=True)
         return contact_count
@@ -309,21 +309,34 @@ class Message(models.Model):
     created_on = models.DateTimeField(auto_now_add=True)
     modified_on = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        ordering = ('-sent_date', )
+
     @classmethod
-    def insert_message(cls, msg_line, log):
-        attachment_ext = ['jpg', 'jpeg', 'gif', 'pdf', 'opus', 'mp3', 'docx', 'doc', 'odt', 'ics', 'PNG', 'aac', 'vcf',
-                          'png', 'xlsx', 'mp4']
+    def insert_message(cls, client, msg_line, line, log):
 
         first_appearance = msg_line.find(":")
         second_appearance = msg_line.find(":", first_appearance + 1)
         sender_receiver = msg_line[first_appearance:second_appearance].split("-", 1)[1][1:]
-        sender_receiver_inst = Contact.objects.filter(name=sender_receiver).first()
-        text = msg_line[second_appearance + 1:]
         sent_date = msg_line[:first_appearance + 3]
-        if sender_receiver_inst is None:
-            pass
+        text = msg_line[second_appearance + 1:]
+        if sender_receiver == client:
+            cls.save_msg(sender=client, text=text, line=line, date=sent_date, log=log)
         else:
-            uuid = hashlib.md5(str(sender_receiver_inst.number) + str(sent_date)).hexdigest()
+            cls.save_msg(sender=client, text="WhatsAppDoc: " + text, line=line, date=sent_date, log=log)
+
+        return
+
+    @classmethod
+    def save_msg(cls, sender, text, line, date, log):
+        attachment_ext = ['jpg', 'jpeg', 'gif', 'pdf', 'opus', 'mp3', 'docx', 'doc', 'odt', 'ics', 'PNG', 'aac', 'vcf',
+                          'png', 'xlsx', 'mp4']
+        number = Contact.objects.filter(name=sender).first()
+
+        if number is None:
+            return
+        else:
+            uuid = hashlib.md5(str(number.number) + str(line) + str(date)).hexdigest()
             if cls.message_exists(uuid):
                 pass
             else:
@@ -333,12 +346,12 @@ class Message(models.Model):
                     if ext_split in attachment_ext:
                         attachment = 'files/' + text[1:-17]
                         attachment_instance = Attachment.objects.filter(file=attachment).first()
-                        cls.objects.create(uuid=uuid, contact=sender_receiver_inst, text=text,
+                        cls.objects.create(uuid=uuid, contact=number, text=text,
                                            attachment=attachment_instance,
-                                           log=log, sent_date=sent_date)
+                                           log=log, sent_date=date)
+                        Attachment.objects.filter(file=attachment).update(synced=True)
                 else:
-                    cls.objects.create(uuid=uuid, contact=sender_receiver_inst, text=text, log=log, sent_date=sent_date)
-                    return
+                    cls.objects.create(uuid=uuid, contact=number, text=text, log=log, sent_date=date)
 
     @classmethod
     def send_to_rapidpro(cls):
@@ -387,7 +400,7 @@ class Notification(models.Model):
     modified_on = models.DateTimeField(auto_now=True)
 
     @classmethod
-    def insert_notification(cls, contact, msg_line, log):
+    def insert_notification(cls, contact, msg_line, line, log):
         first_appearance = msg_line.find(":")
         contact = contact
         text = msg_line[first_appearance + 5:-1]
@@ -396,7 +409,7 @@ class Notification(models.Model):
         if contact is None:
             pass
         else:
-            uuid = hashlib.md5(str(contact.number + sent_date)).hexdigest()
+            uuid = hashlib.md5(str(contact.number) + str(line) + str(sent_date)).hexdigest()
             if cls.notification_exists(uuid=uuid):
                 pass
             else:
