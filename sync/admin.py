@@ -35,13 +35,13 @@ class AttachmentAdmin(admin.ModelAdmin):
 class ContactAdmin(admin.ModelAdmin):
     list_display = ('uuid', 'name', 'number', 'alt_number', 'created_on', 'modified_on')
     list_filter = ('modified_on', 'created_on')
-    search_fields = ['id']
+    search_fields = ['id', 'name', 'number']
 
 
 class MessageAdmin(admin.ModelAdmin):
     list_display = ('uuid', 'contact', 'text', 'attachment', 'log', 'sent_date', 'rapidpro_status', 'created_on')
     list_filter = ('modified_on', 'created_on')
-    search_fields = ['id', 'text']
+    search_fields = ['id', 'contact']
 
 
 class WorkspaceAdmin(admin.ModelAdmin):

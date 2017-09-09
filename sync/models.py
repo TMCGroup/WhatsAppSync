@@ -158,7 +158,12 @@ class Contact(models.Model):
     @classmethod
     def read_txt_log(cls, txt_file):
         contact_count = 0
-        name = str(txt_file.log).split("with", 1)[1][1:].split("_", 1)[0]
+        if str(txt_file.log).count("_") == 3:
+            name_concat = str(txt_file.log).split("with", 1)[1][1:].split("_", 2)[0]
+            name = name_concat[0] + '_' + name_concat[1]
+        else:
+            name = str(txt_file.log).split("with", 1)[1][1:].split("_", 1)[0]
+
         ct_inst = cls.objects.filter(name=name).first()
 
         with open('media/' + str(txt_file.log)) as txtfile:
