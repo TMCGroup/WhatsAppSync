@@ -171,13 +171,13 @@ class Contact(models.Model):
             for line_num, line_msg in enumerate(txtfile):
                 first_appearance = line_msg.find(":")
                 if ":" not in line_msg[first_appearance + 1:]:
-                    list_of_msg_line = line_msg.split(",")
+                    list_of_msg_line = line_msg.split(",", 1)
                     if is_date(list_of_msg_line[0]):
                         Notification.insert_notification(contact=ct_inst, msg_line=line_msg, line=line_num,
                                                          log=txt_file)
 
                 else:
-                    list_of_msg_line = line_msg.split(",")
+                    list_of_msg_line = line_msg.split(",", 1)
                     if is_date(list_of_msg_line[0]):
                         Message.insert_message(client=name, msg_line=line_msg, line=line_num, log=txt_file)
 
@@ -315,7 +315,7 @@ class Message(models.Model):
     modified_on = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ('-sent_date', )
+        ordering = ('-sent_date',)
 
     @classmethod
     def insert_message(cls, client, msg_line, line, log):
