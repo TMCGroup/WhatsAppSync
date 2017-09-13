@@ -157,7 +157,7 @@ class Contact(models.Model):
 
     @classmethod
     def read_txt_log(cls, txt_file):
-        contact_count = 0
+        log_count = 0
         if str(txt_file.log).count("_") == 3:
             name_concat = str(txt_file.log).split("with", 1)[1][1:].split("_", 2)[0]
             name = name_concat[0] + '_' + name_concat[1]
@@ -165,24 +165,28 @@ class Contact(models.Model):
             name = str(txt_file.log).split("with", 1)[1][1:].split("_", 1)[0]
 
         ct_inst = cls.objects.filter(name=name).first()
+        if ct_inst is None:
+            return
+        else:
+            with open('media/' + str(txt_file.log)) as txtfile:
 
-        with open('media/' + str(txt_file.log)) as txtfile:
+                for line_num, line_msg in enumerate(txtfile):
+                    first_appearance = line_msg.find(":")
+                    if ":" not in line_msg[first_appearance + 1:]:
+                        list_of_msg_line = line_msg.split(",", 1)
+                        if is_date(list_of_msg_line[0]):
+                            Notification.insert_notification(contact=ct_inst, msg_line=line_msg, line=line_num,
+                                                             log=txt_file)
 
-            for line_num, line_msg in enumerate(txtfile):
-                first_appearance = line_msg.find(":")
-                if ":" not in line_msg[first_appearance + 1:]:
-                    list_of_msg_line = line_msg.split(",", 1)
-                    if is_date(list_of_msg_line[0]):
-                        Notification.insert_notification(contact=ct_inst, msg_line=line_msg, line=line_num,
-                                                         log=txt_file)
+                    else:
+                        list_of_msg_line = line_msg.split(",", 1)
+                        if is_date(list_of_msg_line[0]):
+                            Message.insert_message(client=name, msg_line=line_msg, line=line_num, log=txt_file)
 
-                else:
-                    list_of_msg_line = line_msg.split(",", 1)
-                    if is_date(list_of_msg_line[0]):
-                        Message.insert_message(client=name, msg_line=line_msg, line=line_num, log=txt_file)
+                Log.objects.filter(log=txt_file).update(synced=True)
+                log_count += 1
 
-            Log.objects.filter(log=txt_file).update(synced=True)
-        return contact_count
+        return log_count
 
     @classmethod
     def contact_exists(cls, uuid):
