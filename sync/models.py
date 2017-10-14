@@ -159,7 +159,7 @@ class Contact(models.Model):
     def read_txt_log(cls, txt_file):
         log_count = 0
         if str(txt_file.log).count("_") == 3:
-            name_concat = str(txt_file.log).split("with", 1)[1][1:].split("_", 2)[0]
+            name_concat = str(txt_file.log).split("with", 1)[1][1:].split("_", 2)
             name = name_concat[0] + '_' + name_concat[1]
         else:
             name = str(txt_file.log).split("with", 1)[1][1:].split("_", 1)[0]
@@ -340,12 +340,12 @@ class Message(models.Model):
     def save_msg(cls, sender, text, line, date, log):
         attachment_ext = ['jpg', 'jpeg', 'gif', 'pdf', 'opus', 'mp3', 'docx', 'doc', 'odt', 'ics', 'PNG', 'aac', 'vcf',
                           'png', 'xlsx', 'mp4']
-        number = Contact.objects.filter(name=sender).first()
+        contact = Contact.objects.filter(name=sender).first()
 
-        if number is None:
+        if contact is None:
             return
         else:
-            uuid = hashlib.md5(str(number.number) + str(line) + str(date)).hexdigest()
+            uuid = hashlib.md5(str(contact.number) + str(line) + str(date)).hexdigest()
             if cls.message_exists(uuid):
                 pass
             else:
@@ -355,12 +355,42 @@ class Message(models.Model):
                     if ext_split in attachment_ext:
                         attachment = 'files/' + text[1:-17]
                         attachment_instance = Attachment.objects.filter(file=attachment).first()
-                        cls.objects.create(uuid=uuid, contact=number, text=text,
-                                           attachment=attachment_instance,
-                                           log=log, sent_date=date)
-                        Attachment.objects.filter(file=attachment).update(synced=True)
+                        new_date = cls.second_incrementer(contact)
+                        if new_date is None:
+                            new_date = date + ':00'
+                            cls.objects.create(uuid=uuid, contact=contact, text=text,
+                                               attachment=attachment_instance,
+                                               log=log, sent_date=new_date)
+                            Attachment.objects.filter(file=attachment).update(synced=True)
+                        else:
+                            cls.objects.create(uuid=uuid, contact=contact, text=text,
+                                               attachment=attachment_instance,
+                                               log=log, sent_date=new_date)
+                            Attachment.objects.filter(file=attachment).update(synced=True)
                 else:
-                    cls.objects.create(uuid=uuid, contact=number, text=text, log=log, sent_date=date)
+                    new_date = cls.second_incrementer(contact)
+                    if new_date is None:
+                        new_date = date + ':00'
+                        cls.objects.create(uuid=uuid, contact=contact, text=text, log=log, sent_date=new_date)
+                    else:
+                        cls.objects.create(uuid=uuid, contact=contact, text=text, log=log, sent_date=new_date)
+
+    @classmethod
+    def second_incrementer(cls, contact):
+        last_message = cls.objects.filter(contact=contact).first()
+        if last_message is None:
+            return
+        else:
+            last_date = last_message.sent_date
+            last_sec = last_date.split(":")[2]
+            if int(last_sec) < 9:
+                new_sec = int(last_sec[1]) + 1
+                return last_date[:-2] + '0' + str(new_sec)
+            elif 9 <= int(last_sec) < 59:
+                new_sec = int(last_sec) + 1
+                return last_date[:-2] + str(new_sec)
+            else:
+                return last_date[:-2] + '00'
 
     @classmethod
     def send_to_rapidpro(cls):
