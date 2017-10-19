@@ -355,42 +355,47 @@ class Message(models.Model):
                     if ext_split in attachment_ext:
                         attachment = 'files/' + text[1:-17]
                         attachment_instance = Attachment.objects.filter(file=attachment).first()
-                        new_date = cls.second_incrementer(contact)
-                        if new_date is None:
-                            new_date = date + ':00'
-                            cls.objects.create(uuid=uuid, contact=contact, text=text,
-                                               attachment=attachment_instance,
-                                               log=log, sent_date=new_date)
-                            Attachment.objects.filter(file=attachment).update(synced=True)
+                        new_date = cls.second_incrementer(contact, date)
+                        if not new_date:
+                            return
                         else:
                             cls.objects.create(uuid=uuid, contact=contact, text=text,
                                                attachment=attachment_instance,
                                                log=log, sent_date=new_date)
                             Attachment.objects.filter(file=attachment).update(synced=True)
                 else:
-                    new_date = cls.second_incrementer(contact)
-                    if new_date is None:
-                        new_date = date + ':00'
-                        cls.objects.create(uuid=uuid, contact=contact, text=text, log=log, sent_date=new_date)
+                    new_date = cls.second_incrementer(contact, date)
+                    if not new_date:
+                        return
                     else:
                         cls.objects.create(uuid=uuid, contact=contact, text=text, log=log, sent_date=new_date)
 
     @classmethod
-    def second_incrementer(cls, contact):
-        last_message = cls.objects.filter(contact=contact).first()
-        if last_message is None:
-            return
+    def second_incrementer(cls, contact, date):
+        last_message = ''
+        try:
+            last_message = Message.objects.filter(contact=contact).latest('id')
+        except Exception:
+            pass
+
+        if not last_message:
+            return str(date) + ':00'
         else:
             last_date = last_message.sent_date
-            last_sec = last_date.split(":")[2]
-            if int(last_sec) < 9:
-                new_sec = int(last_sec[1]) + 1
-                return last_date[:-2] + '0' + str(new_sec)
-            elif 9 <= int(last_sec) < 59:
-                new_sec = int(last_sec) + 1
-                return last_date[:-2] + str(new_sec)
+            delimit_ld = last_date.strip().split(":")
+            delimit_nd = date.strip().split(":")
+            last_sec = int(delimit_ld[2])
+            if delimit_ld[1] == delimit_nd[1]:
+                if last_sec < 9:
+                    new_sec = last_sec + 1
+                    return str(date) + ':0' + str(new_sec)
+                elif 9 <= last_sec < 59:
+                    new_sec = last_sec + 1
+                    return str(date) + ':' + str(new_sec)
+                elif last_sec < 60:
+                    return str(date) + ':01'
             else:
-                return last_date[:-2] + '00'
+                return str(date) + ':00'
 
     @classmethod
     def send_to_rapidpro(cls):
