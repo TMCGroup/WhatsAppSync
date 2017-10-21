@@ -128,9 +128,9 @@ class Contact(models.Model):
     def read_contact_csv(cls):
         csv_file = ContactCsv.objects.filter(synced=False).first()
         try:
-            df = pd.read_csv('media/' + str(csv_file.csv_log), usecols=[0, 30], header=None, skiprows=1)
+            df = pd.read_csv('media/' + str(csv_file.csv_log), usecols=[0, 32], header=None, skiprows=1)
             df.dropna(axis=0, how='any')
-            dic = dict(zip(df[0], df[30]))
+            dic = dict(zip(df[0], df[32]))
             for key, value in dic.iteritems():
                 if ":" not in str(value):
                     uuid = hashlib.md5(str(value)).hexdigest()
