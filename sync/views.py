@@ -39,3 +39,5 @@ def read_logs(request):
 def send_rapidpro_data(request):
     message = Message.send_to_rapidpro()
     return render(request, 'sendtorapidpro.html', locals())
+
+

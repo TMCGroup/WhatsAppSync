@@ -128,9 +128,9 @@ class Contact(models.Model):
     def read_contact_csv(cls):
         csv_file = ContactCsv.objects.filter(synced=False).first()
         try:
-            df = pd.read_csv('media/' + str(csv_file.csv_log), usecols=[0, 30], header=None, skiprows=1)
+            df = pd.read_csv('media/' + str(csv_file.csv_log), usecols=[0, 32], header=None, skiprows=1)
             df.dropna(axis=0, how='any')
-            dic = dict(zip(df[0], df[30]))
+            dic = dict(zip(df[0], df[32]))
             for key, value in dic.iteritems():
                 if ":" not in str(value):
                     uuid = hashlib.md5(str(value)).hexdigest()
@@ -157,27 +157,36 @@ class Contact(models.Model):
 
     @classmethod
     def read_txt_log(cls, txt_file):
-        contact_count = 0
-        name = str(txt_file.log).split("with", 1)[1][1:].split("_", 1)[0]
+        log_count = 0
+        if str(txt_file.log).count("_") == 3:
+            name_concat = str(txt_file.log).split("with", 1)[1][1:].split("_", 2)
+            name = name_concat[0] + '_' + name_concat[1]
+        else:
+            name = str(txt_file.log).split("with", 1)[1][1:].split("_", 1)[0]
+
         ct_inst = cls.objects.filter(name=name).first()
+        if ct_inst is None:
+            return
+        else:
+            with open('media/' + str(txt_file.log)) as txtfile:
 
-        with open('media/' + str(txt_file.log)) as txtfile:
+                for line_num, line_msg in enumerate(txtfile):
+                    first_appearance = line_msg.find(":")
+                    if ":" not in line_msg[first_appearance + 1:]:
+                        list_of_msg_line = line_msg.split(",", 1)
+                        if is_date(list_of_msg_line[0]):
+                            Notification.insert_notification(contact=ct_inst, msg_line=line_msg, line=line_num,
+                                                             log=txt_file)
 
-            for line_num, line_msg in enumerate(txtfile):
-                first_appearance = line_msg.find(":")
-                if ":" not in line_msg[first_appearance + 1:]:
-                    list_of_msg_line = line_msg.split(",")
-                    if is_date(list_of_msg_line[0]):
-                        Notification.insert_notification(contact=ct_inst, msg_line=line_msg, line=line_num,
-                                                         log=txt_file)
+                    else:
+                        list_of_msg_line = line_msg.split(",", 1)
+                        if is_date(list_of_msg_line[0]):
+                            Message.insert_message(client=name, msg_line=line_msg, line=line_num, log=txt_file)
 
-                else:
-                    list_of_msg_line = line_msg.split(",")
-                    if is_date(list_of_msg_line[0]):
-                        Message.insert_message(client=name, msg_line=line_msg, line=line_num, log=txt_file)
+                Log.objects.filter(log=txt_file).update(synced=True)
+                log_count += 1
 
-            Log.objects.filter(log=txt_file).update(synced=True)
-        return contact_count
+        return log_count
 
     @classmethod
     def contact_exists(cls, uuid):
@@ -310,7 +319,7 @@ class Message(models.Model):
     modified_on = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ('-sent_date', )
+        ordering = ('-sent_date',)
 
     @classmethod
     def insert_message(cls, client, msg_line, line, log):
@@ -331,12 +340,12 @@ class Message(models.Model):
     def save_msg(cls, sender, text, line, date, log):
         attachment_ext = ['jpg', 'jpeg', 'gif', 'pdf', 'opus', 'mp3', 'docx', 'doc', 'odt', 'ics', 'PNG', 'aac', 'vcf',
                           'png', 'xlsx', 'mp4']
-        number = Contact.objects.filter(name=sender).first()
+        contact = Contact.objects.filter(name=sender).first()
 
-        if number is None:
+        if contact is None:
             return
         else:
-            uuid = hashlib.md5(str(number.number) + str(line) + str(date)).hexdigest()
+            uuid = hashlib.md5(str(contact.number) + str(line) + str(date)).hexdigest()
             if cls.message_exists(uuid):
                 pass
             else:
@@ -346,12 +355,47 @@ class Message(models.Model):
                     if ext_split in attachment_ext:
                         attachment = 'files/' + text[1:-17]
                         attachment_instance = Attachment.objects.filter(file=attachment).first()
-                        cls.objects.create(uuid=uuid, contact=number, text=text,
-                                           attachment=attachment_instance,
-                                           log=log, sent_date=date)
-                        Attachment.objects.filter(file=attachment).update(synced=True)
+                        new_date = cls.second_incrementer(contact, date)
+                        if not new_date:
+                            return
+                        else:
+                            cls.objects.create(uuid=uuid, contact=contact, text=text,
+                                               attachment=attachment_instance,
+                                               log=log, sent_date=new_date)
+                            Attachment.objects.filter(file=attachment).update(synced=True)
                 else:
-                    cls.objects.create(uuid=uuid, contact=number, text=text, log=log, sent_date=date)
+                    new_date = cls.second_incrementer(contact, date)
+                    if not new_date:
+                        return
+                    else:
+                        cls.objects.create(uuid=uuid, contact=contact, text=text, log=log, sent_date=new_date)
+
+    @classmethod
+    def second_incrementer(cls, contact, date):
+        last_message = ''
+        try:
+            last_message = Message.objects.filter(contact=contact).latest('id')
+        except Exception:
+            pass
+
+        if not last_message:
+            return str(date) + ':00'
+        else:
+            last_date = last_message.sent_date
+            delimit_ld = last_date.strip().split(":")
+            delimit_nd = date.strip().split(":")
+            last_sec = int(delimit_ld[2])
+            if delimit_ld[1] == delimit_nd[1]:
+                if last_sec < 9:
+                    new_sec = last_sec + 1
+                    return str(date) + ':0' + str(new_sec)
+                elif 9 <= last_sec < 59:
+                    new_sec = last_sec + 1
+                    return str(date) + ':' + str(new_sec)
+                elif last_sec < 60:
+                    return str(date) + ':01'
+            else:
+                return str(date) + ':00'
 
     @classmethod
     def send_to_rapidpro(cls):
