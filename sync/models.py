@@ -287,17 +287,28 @@ class Log(models.Model):
         for path_extension in path_extensions:
             for filename in glob.iglob(path_extension):
                 with open(str(filename)) as txtfile:
-                    last_date = (txtfile.readlines()[-1]).split("-", 1)[0][:-1]
+                    lines = txtfile.readlines()
+                    last_date = cls.last_date(lines)
 
-                cleaned_filename = os.path.join(*(filename.split(os.path.sep)[1:]))
-                filename_split = cleaned_filename.split(".", 1)
-                filename_ext = filename_split[1]
-                new_filename = filename_split[0][1:] + '_' + ''.join(
-                    str(last_date).replace('/', '-').replace(', ', '_').replace(':', '')) + '.' + filename_ext
-                shutil.move(filename, 'media/logs/' + new_filename[9:])
+                if not last_date:
+                    return
+                else:
+                    cleaned_filename = os.path.join(*(filename.split(os.path.sep)[1:]))
+                    filename_split = cleaned_filename.split(".", 1)
+                    filename_ext = filename_split[1]
+                    new_filename = filename_split[0][1:] + '_' + ''.join(
+                        str(last_date).replace('/', '-').replace(', ', '_').replace(':', '')) + '.' + filename_ext
+                    shutil.move(filename, 'media/logs/' + new_filename[9:])
 
-                files_added += 1
+                    files_added += 1
         return files_added
+
+    @classmethod
+    def last_date(cls, lines):
+        for line in lines[::-1]:
+            if "-" in line:
+                if is_date(line.split("-", 1)[0][:-1]):
+                    return line.split("-", 1)[0][:-1]
 
     @classmethod
     def log_exists(cls, log_file):

@@ -23,7 +23,11 @@ SECRET_KEY = 'x95!140ss!f^&o^(mwu42@a&zxf86f!*pp1%^94pvkj%1x*j+7'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['ngrok', 'e0d16073.ngrok.io',
+                 '127.0.0.1', '127.0.0.1:8001',
+                 '154.66.218.50', '192.168.8.102',
+                 '104.155.144.180', 'whatsappsync.com',
+                 ]
 
 # Application definition
 
