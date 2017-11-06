@@ -228,6 +228,7 @@ class Attachment(models.Model):
                 if cls.file_exists(cleaned_filename):
                     pass
                 else:
+                    # insert absolute file name (domain).
                     cls.objects.create(file=cleaned_filename)
                     files_added += 1
         return files_added
