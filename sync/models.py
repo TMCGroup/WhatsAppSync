@@ -73,7 +73,7 @@ class Server(models.Model):
             return
         for part in mail.walk():
             if part.get_content_maintype() != 'multipart' and part.get('Content-Disposition') is not None:
-                open('media/downloads/' + part.get_filename(), 'wb').write(part.get_payload(decode=True))
+                open('media/downloads/' + str(part.get_filename()), 'wb').write(part.get_payload(decode=True))
 
     @classmethod
     def sync_data(cls):
@@ -128,9 +128,9 @@ class Contact(models.Model):
     def read_contact_csv(cls):
         csv_file = ContactCsv.objects.filter(synced=False).first()
         try:
-            df = pd.read_csv('media/' + str(csv_file.csv_log), usecols=[0, 32], header=None, skiprows=1)
+            df = pd.read_csv('media/' + str(csv_file.csv_log), usecols=[0, 30], header=None, skiprows=1)
             df.dropna(axis=0, how='any')
-            dic = dict(zip(df[0], df[32]))
+            dic = dict(zip(df[0], df[30]))
             for key, value in dic.iteritems():
                 if ":" not in str(value):
                     uuid = hashlib.md5(str(value)).hexdigest()
@@ -207,6 +207,7 @@ class Contact(models.Model):
 
     def __unicode__(self):
         return self.name
+
 
 
 class Attachment(models.Model):
@@ -410,7 +411,7 @@ class Message(models.Model):
 
     @classmethod
     def send_to_rapidpro(cls):
-        messages = Message.objects.filter(rapidpro_status=False).all()
+        messages = Message.objects.filter(rapidpro_status=False).all().order_by('-sent_date')
         tmcg_whatsapp_workspace = Workspace.get_workspace()
         external_channel_url = tmcg_whatsapp_workspace.external_channel_receive_url
         sent = 0
