@@ -209,7 +209,6 @@ class Contact(models.Model):
         return self.name
 
 
-
 class Attachment(models.Model):
     file = models.FileField(upload_to="files")
     created_on = models.DateTimeField(auto_now_add=True)
@@ -422,10 +421,11 @@ class Message(models.Model):
             number = m.contact.number
             text = m.text
             data = {'from': number, 'text': text + " " + date_iso, 'date': date}
-            requests.post(url=external_channel_url, data=data,
-                          headers={'context_type': 'application/x-www-form-urlencoded'})
-            Message.objects.filter(id=m.id).update(rapidpro_status=True)
-            sent += 1
+            sent_data = requests.post(url=external_channel_url, data=data,
+                                      headers={'context_type': 'application/x-www-form-urlencoded'})
+            if sent_data.status_code == requests.codes.ok:
+                Message.objects.filter(id=m.id).update(rapidpro_status=True)
+                sent += 1
 
         return sent
 
