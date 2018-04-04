@@ -4,15 +4,15 @@ import email
 import shutil
 import os
 import hashlib
-from datetime import datetime, tzinfo, timedelta
 import requests
 import pandas as pd
 from django.conf import settings
 from django.db import models
 from django.core.files.storage import default_storage
 from dateutil.parser import parse
-from datetime import datetime, tzinfo, timedelta
+from datetime import tzinfo, timedelta
 import requests
+import datetime
 import glob
 
 
@@ -78,11 +78,14 @@ class Server(models.Model):
     @classmethod
     def sync_data(cls):
         hosts = cls.connect()
+        sender_email = 'info@tmcg.co.ug'
+        today = datetime.date.today()
+        cutoff = today - timedelta(days=30)
         if not hosts:
             return 'Not a list'
         else:
             for host in hosts:
-                resp, items = host.search(None, "(ALL)")
+                resp, items = host.search(None, 'FROM', sender_email, 'SINCE', cutoff.strftime('%d-%b-%Y'))
                 items = items[0].split()
                 for emailid in items:
                     cls.download_attachment(host=host, emailid=emailid)
@@ -95,7 +98,7 @@ class Server(models.Model):
             host = imaplib.IMAP4_SSL(d.host)
             host.login(d.user_name, d.password)
             host.select()
-            host.close()
+            host.logout()
         return
 
     def __unicode__(self):
@@ -157,7 +160,9 @@ class Contact(models.Model):
 
     @classmethod
     def read_txt_log(cls, txt_file):
-        log_count = 0
+
+        msg_count = 0
+
         if str(txt_file.log).count("_") == 3:
             name_concat = str(txt_file.log).split("with", 1)[1][1:].split("_", 2)
             name = name_concat[0] + '_' + name_concat[1]
@@ -168,8 +173,8 @@ class Contact(models.Model):
         if ct_inst is None:
             return
         else:
-            with open('media/' + str(txt_file.log)) as txtfile:
 
+            with open('media/' + str(txt_file.log)) as txtfile:
                 for line_num, line_msg in enumerate(txtfile):
                     first_appearance = line_msg.find(":")
                     if ":" not in line_msg[first_appearance + 1:]:
@@ -177,16 +182,19 @@ class Contact(models.Model):
                         if is_date(list_of_msg_line[0]):
                             Notification.insert_notification(contact=ct_inst, msg_line=line_msg, line=line_num,
                                                              log=txt_file)
+                        else:
+                            continue
 
                     else:
                         list_of_msg_line = line_msg.split(",", 1)
                         if is_date(list_of_msg_line[0]):
-                            Message.insert_message(client=name, msg_line=line_msg, line=line_num, log=txt_file)
-
+                            Message.insert_message(client=name, msg_line=line_msg, line=line_num,
+                                                        log=txt_file)
+                            msg_count+=1
+                        else:
+                            continue
                 Log.objects.filter(log=txt_file).update(synced=True)
-                log_count += 1
-
-        return log_count
+        return msg_count
 
     @classmethod
     def contact_exists(cls, uuid):
@@ -226,7 +234,7 @@ class Attachment(models.Model):
             for filename in glob.iglob(path_extension):
                 cleaned_filename = os.path.join(*(filename.split(os.path.sep)[1:]))
                 if cls.file_exists(cleaned_filename):
-                    pass
+                    continue
                 else:
                     cls.objects.create(file=cleaned_filename)
                     files_added += 1
@@ -267,13 +275,13 @@ class Log(models.Model):
 
     @classmethod
     def add_mulitple_logs_from_logs_directory(cls):
-        path_extensions = ['media/logs/*.txt', ]
+        txt_extensions = ['media/logs/*.txt', ]
         files_added = 0
-        for path_extension in path_extensions:
+        for path_extension in txt_extensions:
             for filename in glob.iglob(path_extension):
                 cleaned_filename = os.path.join(*(filename.split(os.path.sep)[1:]))
                 if cls.log_exists(cleaned_filename):
-                    pass
+                    continue
                 else:
                     cls.objects.create(log=cleaned_filename)
                     files_added += 1
@@ -281,10 +289,10 @@ class Log(models.Model):
 
     @classmethod
     def move_mulitple_logs(cls):
-        path_extensions = ['media/downloads/*.txt', ]
+        txt_extensions = ['media/downloads/*.txt', ]
         files_added = 0
 
-        for path_extension in path_extensions:
+        for path_extension in txt_extensions:
             for filename in glob.iglob(path_extension):
                 with open(str(filename)) as txtfile:
                     lines = txtfile.readlines()
@@ -341,11 +349,9 @@ class Message(models.Model):
         sent_date = msg_line[:first_appearance + 3]
         text = msg_line[second_appearance + 1:]
         if sender_receiver == client:
-            cls.save_msg(sender=client, text=text, line=line, date=sent_date, log=log)
+            return cls.save_msg(sender=client, text=text, line=line, date=sent_date, log=log)
         else:
-            cls.save_msg(sender=client, text="WhatsAppDoc: " + text, line=line, date=sent_date, log=log)
-
-        return
+            return cls.save_msg(sender=client, text="WhatsAppDoc: " + text, line=line, date=sent_date, log=log)
 
     @classmethod
     def save_msg(cls, sender, text, line, date, log):
@@ -358,7 +364,7 @@ class Message(models.Model):
         else:
             uuid = hashlib.md5(str(contact.number) + str(line) + str(date)).hexdigest()
             if cls.message_exists(uuid):
-                pass
+                return
             else:
 
                 if "(file attached)" in text:
@@ -374,12 +380,14 @@ class Message(models.Model):
                                                attachment=attachment_instance,
                                                log=log, sent_date=new_date)
                             Attachment.objects.filter(file=attachment).update(synced=True)
+
                 else:
                     new_date = cls.second_incrementer(contact, date)
                     if not new_date:
                         return
                     else:
                         cls.objects.create(uuid=uuid, contact=contact, text=text, log=log, sent_date=new_date)
+                        return new_date
 
     @classmethod
     def second_incrementer(cls, contact, date):
@@ -426,6 +434,8 @@ class Message(models.Model):
             if sent_data.status_code == requests.codes.ok:
                 Message.objects.filter(id=m.id).update(rapidpro_status=True)
                 sent += 1
+            else:
+                return sent_data.status_code
 
         return sent
 
@@ -463,11 +473,11 @@ class Notification(models.Model):
         sent_date = msg_line[:first_appearance + 3]
 
         if contact is None:
-            pass
+            return
         else:
             uuid = hashlib.md5(str(contact.number) + str(line) + str(sent_date)).hexdigest()
             if cls.notification_exists(uuid=uuid):
-                pass
+                return
             else:
                 cls.objects.create(uuid=uuid, contact=contact, text=text, log=log, sent_date=sent_date)
         return

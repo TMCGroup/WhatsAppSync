@@ -1,6 +1,6 @@
 .idea
 db.sqlite3
-media/logs/*
+media/*
 WhatsAppSync/settings.py
 *.pyc
 /celerybeat.pid
@@ -26,7 +26,6 @@ build/
 develop-eggs/
 dist/
 =======
-downloads/
 eggs/
 .eggs/
 lib/
