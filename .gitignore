@@ -1,5 +1,6 @@
 .idea
 db.sqlite3
+db.sqlite
 media/*
 WhatsAppSync/settings.py
 *.pyc
