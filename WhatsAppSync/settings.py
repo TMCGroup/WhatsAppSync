@@ -27,6 +27,7 @@ ALLOWED_HOSTS = ['ngrok', 'e0d16073.ngrok.io',
                  '127.0.0.1', '127.0.0.1:8001',
                  '154.66.218.50', '192.168.8.102',
                  '104.155.144.180', 'whatsappsync.com',
+                 '12cb99dc.ngrok.io'
                  ]
 
 # Application definition
@@ -76,10 +77,21 @@ WSGI_APPLICATION = 'WhatsAppSync.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/1.10/ref/settings/#databases
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+#     }
+# }
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': '',
+        'USER': '',
+        'PASSWORD': '',
+        'HOST': '',
+        'PORT': '',
     }
 }
 
