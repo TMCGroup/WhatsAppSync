@@ -10,10 +10,11 @@ from django.conf import settings
 from django.db import models
 from django.core.files.storage import default_storage
 from dateutil.parser import parse
-from datetime import tzinfo, timedelta
+from datetime import tzinfo, timedelta, datetime
 import requests
 import datetime
 import glob
+from temba_client.v2 import TembaClient
 
 
 def is_date(string):
@@ -118,6 +119,11 @@ class Workspace(models.Model):
     def get_workspace(cls):
         return cls.objects.filter(active_status=True).first()
 
+    @classmethod
+    def get_rapidpro_workspaces(cls):
+        workspace = cls.objects.filter(active_status=True).first()
+        return TembaClient(workspace.host, workspace.key)
+
 
 class Contact(models.Model):
     uuid = models.CharField(max_length=100)
@@ -189,8 +195,8 @@ class Contact(models.Model):
                         list_of_msg_line = line_msg.split(",", 1)
                         if is_date(list_of_msg_line[0]):
                             Message.insert_message(client=name, msg_line=line_msg, line=line_num,
-                                                        log=txt_file)
-                            msg_count+=1
+                                                   log=txt_file)
+                            msg_count += 1
                         else:
                             continue
                 Log.objects.filter(log=txt_file).update(synced=True)
@@ -517,3 +523,67 @@ class ContactCsv(models.Model):
 
     def __unicode__(self):
         return str(self.csv_log)
+
+
+class RapidProMessages(models.Model):
+    msg_id = models.IntegerField()
+    archived = models.BooleanField(default=False)
+    created_on = models.DateTimeField(null=True, blank=False)
+    modified_on = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now=False, auto_now_add=True)
+    modified_at = models.DateTimeField(auto_now=True, auto_now_add=False)
+
+    class Meta:
+        ordering = ['-created_on', ]
+        get_latest_by = 'modified_on'
+
+    @classmethod
+    def get_rapidpro_messages(cls, client):
+        added = 0
+        folders = ['flows']
+        for folder in folders:
+            last = cls.objects.latest()
+            if not last:
+                for message_batch in client.get_messages(folder='flows').iterfetches(retry_on_rate_exceed=True):
+                    for message in message_batch:
+                        if not cls.message_exists(message):
+                            cls.objects.create(msg_id=message.id, created_on=message.created_on,
+                                               modified_on=message.modified_on)
+                            added += 1
+
+                        else:
+                            for message_batch in client.get_messages(folder=folder, after=last.created_on).iterfetches(
+                                    retry_on_rate_exceed=True):
+                                for message in message_batch:
+                                    if not cls.message_exists(message):
+                                        cls.objects.create(msg_id=message.id, created_on=message.created_on,
+                                                           modified_on=message.modified_on)
+                                        added += 1
+
+        return added
+
+    @classmethod
+    def message_exists(cls, message):
+        return cls.objects.filter(msg_id=message.id).exists()
+
+    @classmethod
+    def message_archiver(cls, ls):
+        client = Workspace.get_rapidpro_workspaces()
+        client.bulk_archive_messages(ls)
+        for msg in ls:
+            cls.objects.filter(msg_id=msg).update(archived=True)
+        return
+
+
+class Analytics1(models.Model):
+    distinct_user = models.BigIntegerField()
+    msg_count = models.BigIntegerField()
+
+    @classmethod
+    def get_distinct_users(cls):
+        return
+
+
+class Analytics2(models.Model):
+    contact = models.ForeignKey(Contact)
+    encounters = models.BigIntegerField()

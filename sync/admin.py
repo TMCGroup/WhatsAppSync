@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Log, Notification, Message, Contact, Server, ContactCsv, Attachment, Workspace
+from .models import Log, Notification, Message, Contact, Server, ContactCsv, Attachment, Workspace, RapidProMessages
 
 
 class LogAdmin(admin.ModelAdmin):
@@ -47,7 +47,12 @@ class MessageAdmin(admin.ModelAdmin):
 class WorkspaceAdmin(admin.ModelAdmin):
     list_display = ('name', 'host', 'key', 'external_channel_receive_url', 'active_status')
     list_filter = ('modified_on', 'created_on')
-    search_fields = ['id', 'name']
+    search_fields = ['name']
+
+
+class RapidproMessagesAdmin(admin.ModelAdmin):
+    list_display = ('msg_id', 'created_on', 'modified_on', 'created_at', 'modified_at', 'archived')
+    list_filter = ('modified_on', 'created_on')
 
 
 admin.site.register(Server, ServerAdmin)
@@ -58,3 +63,4 @@ admin.site.register(Log, LogAdmin)
 admin.site.register(Notification, NotificationAdmin)
 admin.site.register(Message, MessageAdmin)
 admin.site.register(Workspace, WorkspaceAdmin)
+admin.site.register(RapidProMessages, RapidproMessagesAdmin)
