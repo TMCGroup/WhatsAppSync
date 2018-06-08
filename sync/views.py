@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from django.http import HttpResponse
+from django.db.models import Q
 from django.conf import settings
 import datetime
 from .models import Log, Server, Contact, Attachment, Message, Workspace, RapidProMessages
@@ -48,15 +49,12 @@ def get_reapidpro_messages(request):
 
 
 def archive_rapidpro(request):
-    d = ''
+    d = '2018 3 20'
     date = datetime.datetime.strptime(d, '%Y %m %d')
-    msgs = RapidProMessages.objects.filter(modified_on__gte=date)
+    msgs = RapidProMessages.objects.filter(Q(modified_on__gte=date) & Q(archived=False)).order_by('id')[:100]
     archived = 0
     ls = []
     for msg in msgs:
         ls.append(msg.msg_id)
-        if len(ls) == 100:
-            break
-        archived += 1
-    archived = RapidProMessages.message_archiver(ls)
+        archived = RapidProMessages.message_archiver(ls)
     return render(request, 'archived.html', locals())

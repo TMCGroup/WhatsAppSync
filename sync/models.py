@@ -10,7 +10,7 @@ from django.conf import settings
 from django.db import models
 from django.core.files.storage import default_storage
 from dateutil.parser import parse
-from datetime import tzinfo, timedelta
+from datetime import tzinfo, timedelta, datetime
 import requests
 import datetime
 import glob
@@ -544,20 +544,21 @@ class RapidProMessages(models.Model):
         for folder in folders:
             last = cls.objects.latest()
             if not last:
-                for message_batch in client.get_messages(folder=folder).iterfetches(retry_on_rate_exceed=True):
+                for message_batch in client.get_messages(folder='flows').iterfetches(retry_on_rate_exceed=True):
                     for message in message_batch:
                         if not cls.message_exists(message):
                             cls.objects.create(msg_id=message.id, created_on=message.created_on,
                                                modified_on=message.modified_on)
                             added += 1
 
-            else:
-                for message_batch in client.get_messages(folder=folder, after=last.created_on).iterfetches(retry_on_rate_exceed=True):
-                    for message in message_batch:
-                        if not cls.message_exists(message):
-                            cls.objects.create(msg_id=message.id, created_on=message.created_on,
-                                               modified_on=message.modified_on)
-                            added += 1
+                        else:
+                            for message_batch in client.get_messages(folder=folder, after=last.created_on).iterfetches(
+                                    retry_on_rate_exceed=True):
+                                for message in message_batch:
+                                    if not cls.message_exists(message):
+                                        cls.objects.create(msg_id=message.id, created_on=message.created_on,
+                                                           modified_on=message.modified_on)
+                                        added += 1
 
         return added
 
@@ -566,13 +567,23 @@ class RapidProMessages(models.Model):
         return cls.objects.filter(msg_id=message.id).exists()
 
     @classmethod
-    def sent_message_counter(cls, count):
+    def message_archiver(cls, ls):
+        client = Workspace.get_rapidpro_workspaces()
+        client.bulk_archive_messages(ls)
+        for msg in ls:
+            cls.objects.filter(msg_id=msg).update(archived=True)
         return
 
+
+class Analytics1(models.Model):
+    distinct_user = models.BigIntegerField()
+    msg_count = models.BigIntegerField()
+
     @classmethod
-    def message_archiver(cls, list):
-        client = Workspace.get_rapidpro_workspaces()
-        client.bulk_archive_messages(list)
-        for msg in list:
-            cls.objects.filter(msg_id=msg).update(archiced=True)
-            return
+    def get_distinct_users(cls):
+        return
+
+
+class Analytics2(models.Model):
+    contact = models.ForeignKey(Contact)
+    encounters = models.BigIntegerField()
