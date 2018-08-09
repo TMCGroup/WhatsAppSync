@@ -13,16 +13,14 @@ from dateutil.parser import parse
 from datetime import tzinfo, timedelta, datetime
 import requests
 import urllib2, base64
+import time
 import json
 import datetime
 import glob
 from temba_client.v2 import TembaClient as Client
-import sys
 
 concepts = ['Symptom', 'Injury - Trauma', 'Infection', 'Environment - Exposure', 'Drug - Chemical',
             'Disease - Condition']
-
-key = "=="
 
 
 def is_date(string):
@@ -201,9 +199,8 @@ class Contact(models.Model):
                             Notification.insert_notification(contact=ct_inst, msg_line=line_msg, line=line_num,
                                                              log=txt_file)
                         else:
-                            continue
-                            # Message.update_message(ct_inst, line_msg)
-                            # msg_count += 1
+                            Message.update_message(ct_inst, line_msg)
+                            msg_count += 1
 
                     else:
                         list_of_msg_line = line_msg.split(",", 1)
@@ -466,7 +463,6 @@ class Message(models.Model):
 
     @classmethod
     def update_message(cls, contact, msg):
-        # contact = Contact.objects.filter(name=name).first()
         last_insert = cls.objects.filter(contact=contact).latest('id')
         if not last_insert:
             return
@@ -479,43 +475,36 @@ class Message(models.Model):
         return cls.objects.filter(uuid=uuid).exists()
 
     @classmethod
-    def label_messagesccc(cls):
-        hn_titles = []
-        messages = Message.objects.filter(rapidpro_status=True, rapidpro_label=False).order_by('rapidpro_sent_on')[:2]
-        for m in messages:
-            urlcc = "https://sandbox.healthnavigatorapis.com/3.0/FindCCC/?freetextchiefcomplaints={0}".format(
-                urllib2.quote(m.text))
-            req = urllib2.Request(urlcc)
-            req.add_header("Authorization", "Basic %s" % key)
-            response = urllib2.urlopen(req)
-            try:
-                data = json.load(response)
-                for dd in data:
-                    if dd["Type"] in concepts:
-                        hn_titles.append(str(dd["Title"]))
-            except Exception:
-                return None
-            cls.label(m.rapidpro_id, hn_titles)
-        return Exception.message
-
-    @classmethod
-    def label_messagesdx(cls):
+    def label_messagesccdx(cls):
+        labels = 0
         hn_titles = []
         messages = Message.objects.filter(rapidpro_status=True, rapidpro_label=False).order_by('rapidpro_sent_on')[:100]
         for m in messages:
+            urlcc = "https://sandbox.healthnavigatorapis.com/3.0/FindCCC/?freetextchiefcomplaints={0}".format(
+                urllib2.quote(m.text))
             urldx = "https://sandbox.healthnavigatorapis.com/3.0/FindDx?freetextdx={0}".format(urllib2.quote(m.text))
-            req = urllib2.Request(urldx)
-            req.add_header("Authorization", "Basic %s" % key)
+            req = urllib2.Request(urlcc)
+
+            req.add_header("Authorization", "Basic %s" % os.getenv("key"))
             response = urllib2.urlopen(req)
+            time.sleep(5)
             try:
                 data = json.load(response)
-                for dd in data:
-                    if dd["Type"] in concepts:
-                        hn_titles.append(str(dd["Title"]))
-            except Exception:
-                return None
+            except ValueError:
+                req = urllib2.Request(urldx)
+                req.add_header("Authorization", "Basic %s" % os.getenv("key"))
+                response = urllib2.urlopen(req)
+                try:
+                    data = json.load(response)
+                except Exception:
+                    continue
+            for dd in data:
+                if dd["Type"] in concepts:
+                    hn_titles.append(str(dd["Title"]))
+
             cls.label(m.rapidpro_id, hn_titles)
-        return Exception.message
+            labels += 1
+        return labels
 
     """
     :param int text: message id
@@ -527,6 +516,7 @@ class Message(models.Model):
         client = Workspace.get_rapidpro_workspaces()
         for label in labels:
             Client.bulk_label_messages(client, messages=text, label_name=label)
+        Message.objects.filter(rapidpro_id=text).update(rapidpro_label=True)
         return
 
     def __unicode__(self):

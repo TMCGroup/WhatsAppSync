@@ -40,15 +40,11 @@ def read_logs(request):
 
 def send_rapidpro_data(request):
     message = Message.send_to_rapidpro()
-    # messages = Message.objects.filter(rapidpro_status=False).order_by('created_on')
-    # messages = Log.get_log_file()
     return render(request, 'sendtorapidpro.html', locals())
 
 
 def label_rapidpro_data(request):
-    message = Message.label_messages()
-    # messages = Message.objects.filter(rapidpro_status=False).order_by('created_on')
-    # messages = Log.get_log_file()
+    message = Message.label_messagesccdx()
     return render(request, 'labelrapidpro.html', locals())
 
 
