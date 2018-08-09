@@ -10,7 +10,8 @@ urlpatterns = [
     url(r'^add/$', views.enter_files_into_the_db),
     url(r'^contacts/$', views.call_center_contacts),
     url(r'^send/$', views.send_rapidpro_data),
-    url(r'^get/$', views.get_reapidpro_messages),
+    url(r'^label/$', views.label_rapidpro_data),
+    url(r'^get/$', views.get_rapidpro_messages),
     url(r'^archive/$', views.archive_rapidpro),
 
 

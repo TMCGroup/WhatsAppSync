@@ -34,22 +34,31 @@ def enter_files_into_the_db(request):
 
 
 def read_logs(request):
-    contacts = Log.get_log_file()
+    read = Log.get_log_file()
     return render(request, 'read_logs.html', locals())
 
 
 def send_rapidpro_data(request):
     message = Message.send_to_rapidpro()
+    # messages = Message.objects.filter(rapidpro_status=False).order_by('created_on')
+    # messages = Log.get_log_file()
     return render(request, 'sendtorapidpro.html', locals())
 
 
-def get_reapidpro_messages(request):
+def label_rapidpro_data(request):
+    message = Message.label_messages()
+    # messages = Message.objects.filter(rapidpro_status=False).order_by('created_on')
+    # messages = Log.get_log_file()
+    return render(request, 'labelrapidpro.html', locals())
+
+
+def get_rapidpro_messages(request):
     downloaded = RapidProMessages.get_rapidpro_messages(Workspace.get_rapidpro_workspaces())
     return render(request, 'getrapidpromessages.html', locals())
 
 
 def archive_rapidpro(request):
-    d = '2018 3 20'
+    d = ''
     date = datetime.datetime.strptime(d, '%Y %m %d')
     msgs = RapidProMessages.objects.filter(Q(modified_on__gte=date) & Q(archived=False)).order_by('id')[:100]
     archived = 0
