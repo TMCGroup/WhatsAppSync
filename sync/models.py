@@ -1,26 +1,32 @@
-import glob
 import imaplib
 import email
 import shutil
 import os
 import hashlib
-import requests
+
+from django.db.models import Q
+
+from WhatsAppSync.envvars import key_health_nav, key_hiwa_rapidpro
 import pandas as pd
-from django.conf import settings
 from django.db import models
-from django.core.files.storage import default_storage
 from dateutil.parser import parse
 from datetime import tzinfo, timedelta, datetime
 import requests
-import urllib2, base64
-import time
-import json
+import urllib2
+import urllib
 import datetime
 import glob
+import json
 from temba_client.v2 import TembaClient as Client
 
-concepts = ['Symptom', 'Injury - Trauma', 'Infection', 'Environment - Exposure', 'Drug - Chemical',
-            'Disease - Condition']
+import sys
+
+reload(sys)
+sys.setdefaultencoding('utf-8')
+
+concepts = ['Symptom', 'Injury - Trauma', 'Infection', 'Environment - Exposure', 'Drug - Chemical']
+
+conceptd = ['Disease - Condition']
 
 
 def is_date(string):
@@ -128,7 +134,8 @@ class Workspace(models.Model):
     @classmethod
     def get_rapidpro_workspaces(cls):
         workspace = cls.objects.filter(active_status=True).first()
-        return Client(workspace.host, workspace.key)
+        client = Client(workspace.host, workspace.key)
+        return client
 
 
 class Contact(models.Model):
@@ -199,7 +206,7 @@ class Contact(models.Model):
                             Notification.insert_notification(contact=ct_inst, msg_line=line_msg, line=line_num,
                                                              log=txt_file)
                         else:
-                            Message.update_message(ct_inst, line_msg)
+                            Message.update_continuing_message(ct_inst, line_msg)
                             msg_count += 1
 
                     else:
@@ -277,6 +284,7 @@ class Attachment(models.Model):
 class Log(models.Model):
     CHAT = (('Group Chat', 'Group Chat'), ('Individual Chat', 'Individual Chat'))
     log = models.FileField(upload_to="logs")
+    number_of_lines = models.IntegerField(null=True)
     chat_type = models.CharField(max_length=17, choices=CHAT, default='Individual Chat')
     created_on = models.DateTimeField(auto_now_add=True)
     synced = models.BooleanField(default=False)
@@ -296,10 +304,13 @@ class Log(models.Model):
         for path_extension in txt_extensions:
             for filename in glob.iglob(path_extension):
                 cleaned_filename = os.path.join(*(filename.split(os.path.sep)[1:]))
-                if cls.log_exists(cleaned_filename):
+                with open(str(filename)) as txtfile:
+                    number_of_lines = len(txtfile.readlines())
+
+                if cls.log_exists(cleaned_filename, number_of_lines):
                     continue
                 else:
-                    cls.objects.create(log=cleaned_filename)
+                    cls.objects.create(log=cleaned_filename, number_of_lines=number_of_lines)
                     files_added += 1
         return files_added
 
@@ -335,8 +346,8 @@ class Log(models.Model):
                     return line.split("-", 1)[0][:-1]
 
     @classmethod
-    def log_exists(cls, log_file):
-        return cls.objects.filter(log=log_file).exists()
+    def log_exists(cls, log_file, lines):
+        return cls.objects.filter(Q(log__startswith=log_file[:-9]) & Q(number_of_lines=lines)).exists()
 
     def __unicode__(self):
         return unicode(self.log)
@@ -366,14 +377,14 @@ class Message(models.Model):
         second_appearance = msg_line.find(":", first_appearance + 1)
         sender_receiver = msg_line[first_appearance:second_appearance].split("-", 1)[1][1:]
         sent_date = msg_line[:first_appearance + 3]
-        text = msg_line[second_appearance + 1:].encode('ascii', 'ignore').decode('ascii')
+        text = msg_line[second_appearance + 1:]
         if sender_receiver == client:
-            return cls.save_msg(sender=client, text=text, line=line, date=sent_date, log=log)
+            return cls.save_log_msg(sender=client, text=text, line=line, date=sent_date, log=log)
         else:
-            return cls.save_msg(sender=client, text="WhatsAppDoc: " + text, line=line, date=sent_date, log=log)
+            return cls.save_log_msg(sender=client, text="WhatsAppDoc: " + text, line=line, date=sent_date, log=log)
 
     @classmethod
-    def save_msg(cls, sender, text, line, date, log):
+    def save_log_msg(cls, sender, text, line, date, log):
         attachment_ext = ['jpg', 'jpeg', 'gif', 'pdf', 'opus', 'mp3', 'docx', 'doc', 'odt', 'ics', 'PNG', 'aac', 'vcf',
                           'png', 'xlsx', 'mp4']
         contact = Contact.objects.filter(name=sender).first()
@@ -436,12 +447,12 @@ class Message(models.Model):
                 return str(date) + ':00'
 
     @classmethod
-    def send_to_rapidpro(cls):
+    def send_message_to_rapidpro(cls):
         messages = Message.objects.filter(rapidpro_status=False).order_by('created_on')
         tmcg_whatsapp_workspace = Workspace.get_workspace()
         external_channel_url = tmcg_whatsapp_workspace.external_channel_receive_url
         sent = 0
-        for m in messages[:4]:
+        for m in messages:
             sent_date = parse(m.sent_date)
             date_iso = sent_date.isoformat()
             date = date_iso + '.180Z'
@@ -462,7 +473,7 @@ class Message(models.Model):
         return sent
 
     @classmethod
-    def update_message(cls, contact, msg):
+    def update_continuing_message(cls, contact, msg):
         last_insert = cls.objects.filter(contact=contact).latest('id')
         if not last_insert:
             return
@@ -475,36 +486,23 @@ class Message(models.Model):
         return cls.objects.filter(uuid=uuid).exists()
 
     @classmethod
-    def label_messagesccdx(cls):
+    def get_messages_to_label(cls):
         labels = 0
-        hn_titles = []
-        messages = Message.objects.filter(rapidpro_status=True, rapidpro_label=False).order_by('rapidpro_sent_on')[:100]
+        l = []
+        messages = cls.objects.filter(rapidpro_status=True, rapidpro_label=False).order_by('rapidpro_sent_on')[:100]
         for m in messages:
-            urlcc = "https://sandbox.healthnavigatorapis.com/3.0/FindCCC/?freetextchiefcomplaints={0}".format(
-                urllib2.quote(m.text))
-            urldx = "https://sandbox.healthnavigatorapis.com/3.0/FindDx?freetextdx={0}".format(urllib2.quote(m.text))
-            req = urllib2.Request(urlcc)
-
-            req.add_header("Authorization", "Basic %s" % os.getenv("key"))
-            response = urllib2.urlopen(req)
-            time.sleep(5)
-            try:
-                data = json.load(response)
-            except ValueError:
-                req = urllib2.Request(urldx)
-                req.add_header("Authorization", "Basic %s" % os.getenv("key"))
-                response = urllib2.urlopen(req)
-                try:
-                    data = json.load(response)
-                except Exception:
+            if m.text[:11] == "WhatsAppDoc":
+                continue
+            else:
+                hn_titles = cls.ccc(message=m)
+                l.append(hn_titles)
+                if not hn_titles:
+                    hn_titles = cls.dx(message=m)
+                    l.append(hn_titles)
+                else:
                     continue
-            for dd in data:
-                if dd["Type"] in concepts:
-                    hn_titles.append(str(dd["Title"]))
-
-            cls.label(m.rapidpro_id, hn_titles)
-            labels += 1
-        return labels
+                labels += 1
+        return l
 
     """
     :param int text: message id
@@ -512,10 +510,51 @@ class Message(models.Model):
     """
 
     @classmethod
-    def label(cls, text, labels):
+    def ccc(cls, message):
+        hn_titles = []
+        try:
+            urlcc = "https://sandbox.healthnavigatorapis.com/3.0/FindCCC/?freetextchiefcomplaints={0}".format(
+                urllib2.quote(message.text))
+        except KeyError:
+            return Message.objects.filter(rapidpro_id=message.rapidpro_id).update(rapidpro_label=True)
+        req = urllib2.Request(urlcc)
+        req.add_header("Authorization", "Basic %s" % key_health_nav)
+        response = urllib2.urlopen(req)
+        try:
+            data = json.load(response)
+        except ValueError:
+            return
+
+        for dd in data:
+            if dd["Type"] in concepts:
+                hn_titles.append(str(dd["Title"]))
+        return hn_titles
+
+    @classmethod
+    def dx(cls, message):
+        hn_titles = []
+        try:
+            urldx = "https://sandbox.healthnavigatorapis.com/3.0/FindDx?freetextdx={0}".format(
+                urllib2.quote(message.text))
+        except KeyError:
+            return Message.objects.filter(rapidpro_id=message.rapidpro_id).update(rapidpro_label=True)
+        req = urllib2.Request(urldx)
+        req.add_header("Authorization", "Basic %s" % key_health_nav)
+        response = urllib2.urlopen(req)
+        try:
+            data = json.load(response)
+        except ValueError:
+            return
+        for dd in data:
+            if dd["Type"] in conceptd:
+                hn_titles.append(str(dd["Title"]))
+        return hn_titles
+
+    @classmethod
+    def label_messages(cls, text, labels):
         client = Workspace.get_rapidpro_workspaces()
         for label in labels:
-            Client.bulk_label_messages(client, messages=text, label_name=label)
+            client.bulk_label_messages(messages=[text], label_name=label)
         Message.objects.filter(rapidpro_id=text).update(rapidpro_label=True)
         return
 
@@ -589,6 +628,7 @@ class ContactCsv(models.Model):
 class RapidProMessages(models.Model):
     msg_id = models.IntegerField(default=False)
     archived = models.BooleanField(default=False)
+    deleted = models.BooleanField(default=False)
     created_on = models.DateTimeField(null=True, blank=False)
     modified_on = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now=False, auto_now_add=True)
@@ -603,7 +643,7 @@ class RapidProMessages(models.Model):
         added = 0
         folders = ['flows']
         for folder in folders:
-            last = cls.objects.latest('created_on')
+            last = cls.objects.filter(msg_id__isnull=False).latest('created_on')
             if not last:
                 for message_batch in client.get_messages(folder='flows').iterfetches(retry_on_rate_exceed=True):
                     for message in message_batch:
@@ -612,14 +652,14 @@ class RapidProMessages(models.Model):
                                                modified_on=message.modified_on)
                             added += 1
 
-            else:
-                for message_batch in client.get_messages(folder=folder, after=last.created_on).iterfetches(
-                        retry_on_rate_exceed=True):
-                    for message in message_batch:
-                        if not cls.message_exists(message):
-                            cls.objects.create(msg_id=message.id, created_on=message.created_on,
-                                               modified_on=message.modified_on)
-                            added += 1
+                else:
+                    for message_batch in client.get_messages(folder=folder, after=last.created_on).iterfetches(
+                            retry_on_rate_exceed=True):
+                        for message in message_batch:
+                            if not cls.message_exists(message):
+                                cls.objects.create(msg_id=message.id, created_on=message.created_on,
+                                                   modified_on=message.modified_on)
+                                added += 1
 
         return added
 
@@ -630,10 +670,24 @@ class RapidProMessages(models.Model):
     @classmethod
     def message_archiver(cls, ls):
         client = Workspace.get_rapidpro_workspaces()
-        client.bulk_archive_messages(ls)
-        for msg in ls:
-            cls.objects.filter(msg_id=msg).update(archived=True)
+        try:
+            client.bulk_archive_messages(ls)
+            for msg in ls:
+                cls.objects.filter(msg_id=msg).update(archived=True)
+        except Exception:
+            pass
         return
+
+    @classmethod
+    def message_deleter(cls, ls):
+        client = Workspace.get_rapidpro_workspaces()
+        try:
+            client.bulk_delete_messages(ls)
+            for msg in ls:
+                cls.objects.filter(msg_id=msg).update(deleted=True)
+        except Exception:
+            pass
+        return ls
 
 
 class Analytics1(models.Model):

@@ -13,6 +13,7 @@ urlpatterns = [
     url(r'^label/$', views.label_rapidpro_data),
     url(r'^get/$', views.get_rapidpro_messages),
     url(r'^archive/$', views.archive_rapidpro),
+    url(r'^delete/$', views.delete_rapidpro),
 
 
 ]
