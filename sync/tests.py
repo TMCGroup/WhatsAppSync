@@ -21,7 +21,7 @@ class TestMessage(TestCase):
         contact = Contact.objects.first()
         message = Message.objects.first()
         message_count = Message.objects.filter(rapidpro_status=True).count()
-        Message.send_to_rapidpro()
+        Message.send_message_to_rapidpro()
         sent_message_count = Message.objects.filter(rapidpro_status=True).count()
         self.assertEquals(sent_message_count, message_count + sent_message_count)
 

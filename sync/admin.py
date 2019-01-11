@@ -3,7 +3,7 @@ from .models import Log, Notification, Message, Contact, Server, ContactCsv, Att
 
 
 class LogAdmin(admin.ModelAdmin):
-    list_display = ('id', 'log', 'chat_type', 'created_on', 'synced')
+    list_display = ('id', 'log', 'chat_type', 'number_of_lines', 'created_on', 'synced')
     list_filter = ['created_on']
     search_fields = ['log']
 
@@ -39,7 +39,8 @@ class ContactAdmin(admin.ModelAdmin):
 
 
 class MessageAdmin(admin.ModelAdmin):
-    list_display = ('uuid', 'contact', 'text', 'attachment', 'log', 'sent_date', 'rapidpro_status', 'created_on')
+    list_display = ('uuid', 'rapidpro_id', 'contact', 'text', 'attachment', 'log', 'sent_date', 'rapidpro_status', 'rapidpro_sent_on',
+                    'rapidpro_label', 'created_on')
     list_filter = ('modified_on', 'created_on')
     search_fields = ['id', 'text']
 
@@ -51,7 +52,7 @@ class WorkspaceAdmin(admin.ModelAdmin):
 
 
 class RapidproMessagesAdmin(admin.ModelAdmin):
-    list_display = ('msg_id', 'created_on', 'modified_on', 'created_at', 'modified_at', 'archived')
+    list_display = ('msg_id', 'created_on', 'modified_on', 'created_at', 'modified_at', 'archived', 'deleted')
     list_filter = ('modified_on', 'created_on')
 
 

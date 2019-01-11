@@ -28,33 +28,55 @@ def move_files(request):
 
 
 def enter_files_into_the_db(request):
-    Log.add_mulitple_logs_from_logs_directory()
+    lines = Log.add_mulitple_logs_from_logs_directory()
     Attachment.add_mulitple_files_from_files_directory()
     return render(request, 'add.html', locals())
 
 
 def read_logs(request):
-    contacts = Log.get_log_file()
+    read = Log.get_log_file()
     return render(request, 'read_logs.html', locals())
 
 
 def send_rapidpro_data(request):
-    message = Message.send_to_rapidpro()
+    message = Message.send_message_to_rapidpro()
     return render(request, 'sendtorapidpro.html', locals())
 
 
-def get_reapidpro_messages(request):
+def label_rapidpro_data(request):
+    message = Message.get_messages_to_label()
+    return render(request, 'labelrapidpro.html', locals())
+
+
+def get_rapidpro_messages(request):
     downloaded = RapidProMessages.get_rapidpro_messages(Workspace.get_rapidpro_workspaces())
     return render(request, 'getrapidpromessages.html', locals())
 
 
 def archive_rapidpro(request):
-    d = '2018 3 20'
+    d = '2017 1 1'
     date = datetime.datetime.strptime(d, '%Y %m %d')
-    msgs = RapidProMessages.objects.filter(Q(modified_on__gte=date) & Q(archived=False)).order_by('id')[:100]
-    archived = 0
+    i = 0
+    while i < 1000:
+        msgs = RapidProMessages.objects.filter(Q(modified_on__gte=date) & Q(archived=False)).order_by('id')[:100]
+        archived = 0
+        ls = []
+        if not msgs:
+            return
+        for msg in msgs:
+            ls.append(msg.msg_id)
+        archived = RapidProMessages.message_archiver(ls)
+        i += 1
+    return render(request, 'archived.html', locals())
+
+
+def delete_rapidpro(request):
+    d = '2018 6 19'
+    date = datetime.datetime.strptime(d, '%Y %m %d')
+    msgs = RapidProMessages.objects.filter(Q(modified_on__gte=date) & Q(deleted=False)).order_by('id')[:100]
+    deleted = 0
     ls = []
     for msg in msgs:
         ls.append(msg.msg_id)
-        archived = RapidProMessages.message_archiver(ls)
-    return render(request, 'archived.html', locals())
+    deleted = RapidProMessages.message_deleter(ls)
+    return render(request, 'deleted.html', locals())

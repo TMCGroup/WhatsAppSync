@@ -22,6 +22,6 @@ admin.site.site_header = settings.ADMIN_SITE_HEADER
 admin.site.index_title = settings.ADMIN_SITE_INDEX
 
 urlpatterns = [
-    url(r'^admin/', admin.site.urls),
+    url(r'^', admin.site.urls),
     url(r'^', include('sync.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

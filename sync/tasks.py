@@ -1,6 +1,8 @@
 from __future__ import absolute_import
-from .models import Log, Server, Contact, Attachment, Message
+from .models import Log, Server, Contact, Attachment, Message, RapidProMessages, Workspace
 from celery import shared_task
+import datetime
+from django.db.models import Q
 
 
 @shared_task
@@ -43,5 +45,35 @@ def readlogs():
 
 @shared_task
 def send_rapidpro_data():
-    Message.send_to_rapidpro()
+    Message.send_message_to_rapidpro()
+    return
+
+
+@shared_task
+def download_rapidpro_data():
+    RapidProMessages.get_rapidpro_messages(Workspace.get_rapidpro_workspaces())
+    return
+
+
+@shared_task
+def archive_rapidpro_data():
+    d = '2018 3 20'
+    date = datetime.datetime.strptime(d, '%Y %m %d')
+    msgs = RapidProMessages.objects.filter(Q(modified_on__gte=date) & Q(archived=False)).order_by('id')[:100]
+    ls = []
+    for msg in msgs:
+        ls.append(msg.msg_id)
+        RapidProMessages.message_archiver(ls)
+    return
+
+
+@shared_task
+def delete_rapidpro_data():
+    d = '2018 3 20'
+    date = datetime.datetime.strptime(d, '%Y %m %d')
+    msgs = RapidProMessages.objects.filter(Q(modified_on__gte=date) & Q(deleted=False)).order_by('id')[:100]
+    ls = []
+    for msg in msgs:
+        ls.append(msg.msg_id)
+        RapidProMessages.message_deleter(ls)
     return

@@ -4,6 +4,5 @@ from sync.models import Message
 
 class Command(BaseCommand):
     def handle(self, *args, **options):
-        sent = Message.send_message_to_rapidpro()
+        sent = Message.label_messagesccdx()
         self.stdout.write(self.style.SUCCESS('Sent %s message(s) to rapidpro' % sent))
-

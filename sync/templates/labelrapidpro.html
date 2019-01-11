@@ -8,14 +8,14 @@
 <!--{{ message }}-->
 
 <table>
-    <!--{% for m in messages %}-->
-    <!--<tr>-->
-        <!--<td>{{ m.sent_date }}</td>-->
+    {% for m in messages %}
+    <tr>
+        <td>{{ m }}</td>
         <!--<td>{{ m.text }}</td>-->
-    <!--</tr>-->
-    <!--{% endfor %}-->
+    </tr>
+    {% endfor %}
 
-    {{message}}
+    <!--{{message}}-->
 </table>
 </body>
 </html>
