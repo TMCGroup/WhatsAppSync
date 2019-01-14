@@ -5,7 +5,6 @@ media/*
 WhatsAppSync/settings.py
 WhatsAppSync/envvars.py
 
-
 *.pyc
 /celerybeat.pid
 /celerybeat-schedule.db

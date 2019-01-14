@@ -3,9 +3,7 @@ import email
 import shutil
 import os
 import hashlib
-
 from django.db.models import Q
-
 from WhatsAppSync.envvars import *
 import pandas as pd
 from django.db import models
