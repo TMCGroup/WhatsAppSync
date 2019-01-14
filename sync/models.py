@@ -94,6 +94,7 @@ class Server(models.Model):
         sender_email = 'info@tmcg.co.ug'
         today = datetime.date.today()
         cutoff = today - timedelta(days=30)
+        downloads = 0
         if not hosts:
             return 'Not a list'
         else:
@@ -102,11 +103,12 @@ class Server(models.Model):
                 items = items[0].split()
                 for emailid in items:
                     cls.download_attachment(host=host, emailid=emailid)
+                    downloads += 1
+        return downloads
 
     @classmethod
     def close_connection(cls):
         data = cls.objects.filter(status=True).all()
-
         for d in data:
             host = imaplib.IMAP4_SSL(d.host)
             host.login(d.user_name, d.password)
@@ -423,7 +425,7 @@ class Message(models.Model):
                             cls.objects.create(uuid=uuid, contact=contact, text=text, log=log, sent_date=new_date)
                         except ValueError:
                             pass
-                        return new_date
+                    return new_date
 
     @classmethod
     def second_incrementer(cls, contact, date):

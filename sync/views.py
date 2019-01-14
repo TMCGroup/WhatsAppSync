@@ -7,7 +7,7 @@ from .models import Log, Server, Contact, Attachment, Message, Workspace, RapidP
 
 
 def download_attach(request):
-    Server.sync_data()
+    downloads = Server.sync_data()
     return render(request, 'download_attach.html', locals())
 
 
