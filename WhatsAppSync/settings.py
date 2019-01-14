@@ -27,6 +27,7 @@ ALLOWED_HOSTS = ['ngrok', 'e0d16073.ngrok.io',
                  '127.0.0.1', '127.0.0.1:8001',
                  '154.66.218.50', '192.168.8.102',
                  '104.155.144.180', 'whatsappsync.com',
+                 'whatsappsync.tmcg.co.ug',
                  '12cb99dc.ngrok.io'
                  ]
 

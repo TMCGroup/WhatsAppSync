@@ -6,7 +6,7 @@ import hashlib
 
 from django.db.models import Q
 
-from WhatsAppSync.envvars import key_health_nav, key_hiwa_rapidpro
+from WhatsAppSync.envvars import *
 import pandas as pd
 from django.db import models
 from dateutil.parser import parse
@@ -419,7 +419,10 @@ class Message(models.Model):
                     if not new_date:
                         return
                     else:
-                        cls.objects.create(uuid=uuid, contact=contact, text=text, log=log, sent_date=new_date)
+                        try:
+                            cls.objects.create(uuid=uuid, contact=contact, text=text, log=log, sent_date=new_date)
+                        except ValueError:
+                            pass
                         return new_date
 
     @classmethod
