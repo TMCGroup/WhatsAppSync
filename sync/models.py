@@ -241,7 +241,7 @@ class Contact(models.Model):
 
 
 class Attachment(models.Model):
-    file = models.FileField(upload_to="files")
+    file = models.FileField(upload_to="files", max_length=200)
     created_on = models.DateTimeField(auto_now_add=True)
     synced = models.BooleanField(default=False)
 
@@ -283,7 +283,7 @@ class Attachment(models.Model):
 
 class Log(models.Model):
     CHAT = (('Group Chat', 'Group Chat'), ('Individual Chat', 'Individual Chat'))
-    log = models.FileField(upload_to="logs")
+    log = models.FileField(upload_to="logs", max_length=200)
     number_of_lines = models.IntegerField(null=True)
     chat_type = models.CharField(max_length=17, choices=CHAT, default='Individual Chat')
     created_on = models.DateTimeField(auto_now_add=True)
@@ -292,7 +292,7 @@ class Log(models.Model):
     @classmethod
     def get_log_file(cls):
         if cls.objects.filter(synced=False).exists():
-            txt_files = cls.objects.filter(synced=False).all()
+            txt_files = cls.objects.filter(synced=False).order_by('id')[:100]
             for txt_file in txt_files:
                 read = Contact.read_txt_log(txt_file)
             return read
@@ -378,10 +378,13 @@ class Message(models.Model):
         sender_receiver = msg_line[first_appearance:second_appearance].split("-", 1)[1][1:]
         sent_date = msg_line[:first_appearance + 3]
         text = msg_line[second_appearance + 1:]
-        if sender_receiver == client:
-            return cls.save_log_msg(sender=client, text=text, line=line, date=sent_date, log=log)
+        if text:
+            if sender_receiver == client:
+                return cls.save_log_msg(sender=client, text=text, line=line, date=sent_date, log=log)
+            else:
+                return cls.save_log_msg(sender=client, text="WhatsAppDoc: " + text, line=line, date=sent_date, log=log)
         else:
-            return cls.save_log_msg(sender=client, text="WhatsAppDoc: " + text, line=line, date=sent_date, log=log)
+            return
 
     @classmethod
     def save_log_msg(cls, sender, text, line, date, log):
