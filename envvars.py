@@ -1,0 +1,11 @@
+key_h_nav = ""
+key_hiwa_rapidpro = ""
+db_name = 'whatsappsync'
+db_user = 'whatsappsync'
+db_pass = 'whatsappsync'
+db_host = 'localhost'
+db_port = 5432
+celerybeat_user = 'nicholas'
+celerybeat_pass = 'admin1234'
+celerybeat_vhost = 'whatsappsyncvhost'
+celerybeat_port = 5672
