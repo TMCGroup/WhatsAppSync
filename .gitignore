@@ -4,7 +4,6 @@ db.sqlite
 media/*
 WhatsAppSync/settings.py
 
-
 *.pyc
 /celerybeat.pid
 /celerybeat-schedule.db

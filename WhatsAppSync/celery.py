@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 import os
 from celery import Celery
-
+from .envvars import *
 
 # set the default Django settings module for the 'celery' program.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'WhatsAppSync.settings')
@@ -21,7 +21,7 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks()
 
 app = Celery('tasks',
-             broker='amqp://myuser:mypassword@localhost:5672/myvhost',
+             broker='amqp://'+celerybeat_user+':'+celerybeat_pass+'@localhost:5672/'+celerybeat_vhost,
              backend='rpc://',
              include=['sync.tasks'])
 
