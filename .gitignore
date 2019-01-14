@@ -1,7 +1,24 @@
+.idea
+db.sqlite3
+db.sqlite
+media/*
+WhatsAppSync/settings.py
+WhatsAppSync/envvars.py
+
+*.pyc
+/celerybeat.pid
+/celerybeat-schedule.db
+
+.gitignore
+sync/migrations/*
+static*
+
+celerybeat.pid
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[cod]
 *$py.class
+.pyc
 
 # C extensions
 *.so
@@ -11,7 +28,7 @@ __pycache__/
 build/
 develop-eggs/
 dist/
-downloads/
+=======
 eggs/
 .eggs/
 lib/
@@ -97,6 +114,5 @@ ENV/
 
 # mypy
 .mypy_cache/
-.idea
-db.sqlite3
-media
+
+media/

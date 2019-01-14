@@ -10,7 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.10/ref/settings/
 """
 import os
-
+from .envvars import *
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -24,9 +24,12 @@ SECRET_KEY = 'x95!140ss!f^&o^(mwu42@a&zxf86f!*pp1%^94pvkj%1x*j+7'
 DEBUG = True
 
 ALLOWED_HOSTS = ['ngrok', 'e0d16073.ngrok.io',
-                 '127.0.0.1', '127.0.0.1:8001'
+                 '127.0.0.1', '127.0.0.1:8001',
+                 '154.66.218.50', '192.168.8.102',
+                 '104.155.144.180', 'whatsappsync.com',
+                 'whatsappsync.tmcg.co.ug',
+                 '12cb99dc.ngrok.io'
                  ]
-
 
 # Application definition
 
@@ -72,17 +75,19 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'WhatsAppSync.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/1.10/ref/settings/#databases
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': db_name,
+        'USER': db_user,
+        'PASSWORD': db_pass,
+        'HOST': db_host,
+        'PORT': db_port,
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/1.10/ref/settings/#auth-password-validators
@@ -102,13 +107,12 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/1.10/topics/i18n/
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Africa/Kampala'
 
 USE_I18N = True
 
@@ -116,15 +120,14 @@ USE_L10N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.10/howto/static-files/
 
 STATIC_URL = '/static/'
-ADMIN_SITE_HEADER ="THE MEDICAL CONCIERGE GROUP"
+ADMIN_SITE_HEADER = "THE MEDICAL CONCIERGE GROUP"
 ADMIN_SITE_INDEX = "WhatsApp to RapidPro Syncroniser"
 
-ADMIN_SITE_HEADER ="THE MEDICAL CONCIERGE GROUP"
+ADMIN_SITE_HEADER = "THE MEDICAL CONCIERGE GROUP"
 ADMIN_SITE_INDEX = "WhatsApp to RapidPro Syncroniser"
 
 TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'
@@ -132,6 +135,4 @@ TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-
-
-
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
