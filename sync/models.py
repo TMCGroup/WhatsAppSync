@@ -71,7 +71,7 @@ class Server(models.Model):
         for d in data:
             host = imaplib.IMAP4_SSL(d.host)
             host.login(d.user_name, d.password)
-            host.list()
+            host.select('Whatsapp')
             hosts.append(host)
         return hosts
 
