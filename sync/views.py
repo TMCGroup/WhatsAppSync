@@ -22,14 +22,14 @@ def call_center_contacts(request):
 
 
 def move_files(request):
-    Attachment.move_mulitple_files()
-    Log.move_mulitple_logs()
+    attachments = Attachment.move_mulitple_files()
+    logs = Log.move_mulitple_logs()
     return render(request, 'move_files.html', locals())
 
 
 def enter_files_into_the_db(request):
-    lines = Log.add_mulitple_logs_from_logs_directory()
-    Attachment.add_mulitple_files_from_files_directory()
+    logs = Log.add_mulitple_logs_from_logs_directory()
+    attachments = Attachment.add_mulitple_files_from_files_directory()
     return render(request, 'add.html', locals())
 
 

@@ -73,7 +73,7 @@ class Server(models.Model):
         for d in data:
             host = imaplib.IMAP4_SSL(d.host)
             host.login(d.user_name, d.password)
-            host.select()
+            host.list()
             hosts.append(host)
         return hosts
 
